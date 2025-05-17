@@ -339,15 +339,17 @@ export function IssueTracker({ initialIssues, isPro, issueCount: initialIssueCou
 
       // Check if the date is valid
       if (isNaN(date.getTime())) {
+        console.error("Invalid date string:", dateString)
         return "Invalid date"
       }
 
+      // Format the date
       return new Intl.DateTimeFormat("en-US", {
         month: "short",
         day: "numeric",
       }).format(date)
     } catch (error) {
-      console.error("Error formatting date:", error)
+      console.error("Error formatting date:", error, dateString)
       return "Invalid date"
     }
   }
