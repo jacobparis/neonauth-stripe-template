@@ -2,6 +2,12 @@ import type React from "react"
 import { AppLayoutClient } from "./layout-client"
 import { stackServerApp } from "@/stack"
 import { redirect } from "next/navigation"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "neon",
+  description: "Manage your issues with Neon.",
+}
 
 export default async function AppLayout({
   children,
