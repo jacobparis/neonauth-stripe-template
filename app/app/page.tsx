@@ -1,82 +1,82 @@
 import { stackServerApp } from "@/stack"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import Link from "next/link"
 import { getStripePlan } from "@/app/api/stripe/plans"
 import { Badge } from "@/components/ui/badge"
+import { IssueTracker } from "@/app/components/issue-tracker"
+import { getIssues, getIssueCount } from "@/lib/issue-actions"
+import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined }
+}) {
   const user = await stackServerApp.getUser({ or: "redirect" })
 
   // Get the user's current plan
   const plan = await getStripePlan(user.id)
   const isPro = plan.id === "PRO"
 
+  // Get issues for the user with error handling
+  let issues = []
+  let issueCount = 0
+  let error = null
+
+  try {
+    issues = await getIssues()
+    issueCount = await getIssueCount()
+  } catch (err) {
+    console.error("Error loading issues:", err)
+    error = "Failed to load issues. Please try again later."
+  }
+
+  // Get the current view from search params
+  const view = (searchParams.view as string) || "all"
+
+  // Filter issues based on the view
+  const filteredIssues = issues.filter((issue) => {
+    if (view === "active") {
+      return issue.status === "open" || issue.status === "in_progress"
+    } else if (view === "backlog") {
+      return issue.priority === "low" && issue.status !== "closed"
+    }
+    return true // "all" view shows everything
+  })
+
   return (
-    <div className="container mx-auto py-8 px-4">
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+    <div className="p-4 max-w-6xl mx-auto">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-xl font-bold">
+            {view === "all" ? "All Issues" : view === "active" ? "Active Issues" : "Backlog Issues"}
+          </h1>
+          <p className="text-muted-foreground text-sm mt-0.5">
+            Welcome back, {user.displayName || "User"}. You're on the {isPro ? "Pro" : "Free"} plan.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {isPro ? (
+            <Badge className="bg-primary text-primary-foreground text-xs">PRO</Badge>
+          ) : (
+            <Button variant="outline" size="sm" asChild className="h-7 text-xs">
+              <a href="/app/settings/account">Upgrade to Pro</a>
+            </Button>
+          )}
+        </div>
+      </div>
 
-      <Card className="max-w-md mx-auto">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Welcome, {user.displayName || "User"}!</CardTitle>
-            <Badge variant={isPro ? "default" : "outline"} className={isPro ? "bg-primary" : ""}>
-              {isPro ? "PRO" : "FREE"}
-            </Badge>
-          </div>
-          <CardDescription>
-            <Link href="/app/settings/profile" className="text-primary hover:underline">
-              View and edit your profile settings
-            </Link>
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium text-foreground/90">Available Features</h3>
-            <ul className="grid gap-1.5 text-sm">
-              <li className="flex items-start">
-                <span className="mr-2 text-primary">•</span>
-                <span>Secure authentication with password or social login</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2 text-primary">•</span>
-                <span>Personalize your profile with custom avatar and theme</span>
-              </li>
-              <li className="flex items-start">
-                <span className="mr-2 text-primary">•</span>
-                <span>Manage email addresses and security settings</span>
-              </li>
-              {isPro && (
-                <li className="flex items-start">
-                  <span className="mr-2 text-primary">•</span>
-                  <span>Enhanced vibes and increased luck with PRO plan</span>
-                </li>
-              )}
-            </ul>
-          </div>
-
-          <div className="rounded-md bg-muted p-3">
-            <h3 className="text-sm font-medium mb-2">User Information</h3>
-            <div className="grid gap-1 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Name</span>
-                <span className="font-medium">{user.displayName || "Not set"}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Email</span>
-                <span className="font-medium">{user.primaryEmail}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Created</span>
-                <span className="font-medium">{new Date(user.signedUpAt).toLocaleDateString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Plan</span>
-                <span className="font-medium">{isPro ? "PRO" : "FREE"}</span>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {error ? (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : (
+        <div className="space-y-4">
+          <IssueTracker initialIssues={filteredIssues} isPro={isPro} issueCount={issueCount} />
+        </div>
+      )}
     </div>
   )
 }

@@ -3,6 +3,7 @@ import "./globals.css"
 import { StackProvider, StackTheme } from "@stackframe/stack"
 import { stackServerApp } from "@/stack"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/toaster"
 
 export default function RootLayout({
   children,
@@ -17,6 +18,7 @@ export default function RootLayout({
             <StackTheme>{children}</StackTheme>
           </StackProvider>
         </ThemeProvider>
+        <Toaster />
       </body>
     </html>
   )
