@@ -19,10 +19,7 @@ export async function getIssues() {
     // Safely handle date values - don't try to convert them
     // The dates are already in the correct format from the database
     return result.map((issue) => ({
-      ...issue,
-      // Ensure created_at and updated_at are ISO strings
-      created_at: issue.created_at ? new Date(issue.created_at).toISOString() : null,
-      updated_at: issue.updated_at ? new Date(issue.updated_at).toISOString() : null,
+      ...issue
     }))
   } catch (error) {
     console.error("Error fetching issues:", error)
