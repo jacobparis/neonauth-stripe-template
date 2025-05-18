@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation"
-import { stackServerApp } from "@/stack"
 import { ProfilePageClient } from "./page-client"
 
 export default async function ProfilePage() {

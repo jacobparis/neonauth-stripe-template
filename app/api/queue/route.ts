@@ -1,4 +1,4 @@
-import { processTask} from "@/app/api/queue/qstash"
+import { processTask, QueueTask} from "@/app/api/queue/qstash"
 import { Receiver } from "@upstash/qstash"
 
 export async function POST(req: Request) {

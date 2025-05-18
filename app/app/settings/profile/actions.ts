@@ -31,8 +31,8 @@ export async function updatePassword(formData: FormData) {
       })
     } else {
       // For users without a password (e.g., OAuth users)
-      await user.updatePassword({
-        newPassword: newPassword,
+      await user.setPassword({
+        password: newPassword,
       })
     }
 

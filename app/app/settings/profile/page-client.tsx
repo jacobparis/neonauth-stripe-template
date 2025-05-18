@@ -14,7 +14,9 @@ import { Separator } from "@/components/ui/separator"
 export function ProfilePageClient() {
   const user = useUser({ or: "redirect" })
   const [profileError, setProfileError] = useState("")
-  const [profileImage, setProfileImage] = useState<string | null>(user.profileImageUrl)
+  const [profileImage, setProfileImage] = useState<string | null>(
+    user.profileImageUrl,
+  )
 
   return (
     <div>
@@ -64,7 +66,7 @@ export function ProfilePageClient() {
             user.update({ displayName })
           }}
         >
-          <div className="flex gap-2 items-end max-w-md">
+          <div className="flex gap-2 items-end">
             <div className="grow">
               <Label htmlFor="displayName" className="text-sm">
                 Display Name
@@ -83,7 +85,9 @@ export function ProfilePageClient() {
             </div>
           </div>
           <div className="mt-1">
-            <p className="text-sm text-destructive min-h-[20px]">{profileError}</p>
+            <p className="text-sm text-destructive min-h-[20px]">
+              {profileError}
+            </p>
           </div>
         </form>
       </section>
@@ -91,10 +95,10 @@ export function ProfilePageClient() {
       <Separator className="my-8" />
 
       {/* Appearance Settings */}
-          <div>
-            <Label className="text-sm mb-3 block">Theme Preference</Label>
-            <ThemeSelect />
-          </div>
+      <div>
+        <Label className="text-sm mb-3 block">Theme Preference</Label>
+        <ThemeSelect />
+      </div>
     </div>
   )
 }
