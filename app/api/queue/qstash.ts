@@ -1,26 +1,30 @@
 import { Client } from "@upstash/qstash"
-import { processUpdateStatus } from "@/actions/update-issue-status"
-import { processUpdatePriority } from "@/actions/update-issue-priority"
-import { processDeleteIssues } from "@/actions/delete-issues"
-import type { Issue } from "@/lib/db/schema"
+import { processDeleteTodos } from "@/actions/delete-todos"
+import { bulkUpdateDueDate } from "@/actions/update-due-date"
+import { bulkUpdateProject } from "@/actions/update-project"
+import { bulkToggleCompleted } from "@/actions/toggle-completed"
 
 export type QueueTask = 
-  | { type: "createIssue"; key: `create-issue-${string}`; issue: Issue }
-  | { type: "updateStatus"; key: `update-status-${string}`; ids: number[]; status: string; userId: string }
-  | { type: "updatePriority"; key: `update-priority-${string}`; ids: number[]; priority: string; userId: string }
-  | { type: "deleteIssues"; key: `delete-issues-${string}`; ids: number[]; userId: string }
+  | { type: "deleteTodo"; key: `delete-todo-${number}`; id: number }
+  | { type: "deleteTodos"; key: `delete-todos-${string}`; ids: number[] }
+  | { type: "updateDueDate"; key: `update-due-date-${string}`; ids: number[]; dueDate: string | null }
+  | { type: "updateProject"; key: `update-project-${string}`; ids: number[]; projectId: number | null }
+  | { type: "toggleCompleted"; key: `toggle-completed-${string}`; ids: number[]; completed: boolean }
 
 export async function processTask(task: QueueTask) {
   try {
     switch (task.type) {
-      case "updateStatus":
-        await processUpdateStatus(task.ids, { status: task.status, userId: task.userId })
+      case "deleteTodos":
+        await processDeleteTodos(task.ids)
         break
-      case "updatePriority":
-        await processUpdatePriority(task.ids, { priority: task.priority, userId: task.userId })
+      case "updateDueDate":
+        await bulkUpdateDueDate(task.ids, task.dueDate ? new Date(task.dueDate) : null)
         break
-      case "deleteIssues":
-        await processDeleteIssues(task.ids, task.userId)
+      case "updateProject":
+        await bulkUpdateProject(task.ids, task.projectId)
+        break
+      case "toggleCompleted":
+        await bulkToggleCompleted(task.ids, task.completed)
         break
       default: {
         throw new Error(`Unknown task type: ${task.type}`)
@@ -39,7 +43,7 @@ const client = new Client({
 })
 
 export async function publishTask<T extends QueueTask>(task: T) {
-  const url = new URL(`${process.env.VERCEL_URL}/api/queue`)
+  const url = new URL(`https://${process.env.VERCEL_URL}/api/queue`)
 
   const job = await client.publishJSON({
     url: url.toString(),
