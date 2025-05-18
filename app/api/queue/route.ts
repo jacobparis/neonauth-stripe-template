@@ -32,4 +32,4 @@ export async function POST(req: Request) {
   await processTask(task)
 
   return Response.json({ message: "Task processed" }, { status: 200 })
-} 
+}

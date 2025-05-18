@@ -110,4 +110,4 @@ export async function bulkUpdateStatus(ids: number[], status: string) {
       message: `Failed to mark issues as ${status.replace("_", " ")}` 
     }
   }
-} 
+}

@@ -110,4 +110,4 @@ export async function bulkUpdatePriority(ids: number[], priority: string) {
       message: `Failed to set priority to ${priority}` 
     }
   }
-} 
+}

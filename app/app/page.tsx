@@ -20,6 +20,8 @@ export default async function DashboardPage({ searchParams }: PageArgs) {
   let issueCount = await getIssueCount()
   let error = null
 
+  console.log(issues)
+
   // Get the current view from search params
   const { view = "all" } = await searchParams
 

@@ -40,4 +40,4 @@ export async function getIssueCount() {
     console.error("Error counting issues:", error)
     return 0
   }
-} 
+}

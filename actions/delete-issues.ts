@@ -96,4 +96,4 @@ export async function bulkDeleteIssues(ids: number[]) {
       message: "Failed to delete issues" 
     }
   }
-} 
+}
