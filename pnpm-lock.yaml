@@ -188,9 +188,6 @@ importers:
       dotenv:
         specifier: latest
         version: 16.5.0
-      drizzle-kit:
-        specifier: latest
-        version: 0.31.1
       drizzle-orm:
         specifier: latest
         version: 0.43.1(09fc5c380fed57a92ebff7b857e3c140)
@@ -294,6 +291,9 @@ importers:
       '@types/react-dom':
         specifier: ^19
         version: 19.0.0
+      drizzle-kit:
+        specifier: latest
+        version: 0.31.1
       postcss:
         specifier: ^8
         version: 8.0.0
