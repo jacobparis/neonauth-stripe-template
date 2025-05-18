@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db"
 import { todos } from "@/lib/schema"
-import { eq } from "drizzle-orm"
+import { eq, inArray } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 
 export async function toggleTodoCompleted(formData: FormData) {
@@ -26,24 +26,10 @@ export async function toggleTodoCompleted(formData: FormData) {
   }
 }
 
-export async function bulkToggleCompleted(todoIds: number[], completed: boolean) {
-  if (!todoIds.length) {
-    return { success: true }
-  }
+export async function bulkToggleCompleted(ids: number[], completed: boolean) {
+  await db.update(todos)
+    .set({ completed })
+    .where(inArray(todos.id, ids))
 
-  try {
-    // For simplicity, we'll update one by one
-    // In a real implementation, you might use a WHERE IN clause
-    for (const id of todoIds) {
-      await db.update(todos)
-        .set({ completed })
-        .where(eq(todos.id, id))
-    }
-    
-    revalidatePath("/")
-    return { success: true }
-  } catch (error) {
-    console.error("Failed to toggle todos completion:", error)
-    return { error: "Failed to toggle todos completion" }
-  }
+  revalidatePath("/app/todos")
 }

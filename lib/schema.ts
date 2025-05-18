@@ -100,9 +100,9 @@ export const selectTodoSchema = createSelectSchema(todos)
 // Types for use in the application
 export type Todo = z.infer<typeof selectTodoSchema>
 export type NewTodo = z.infer<typeof insertTodoSchema>
-\
-export type Project = z.infer<typeof createSelectSchema(projects)>
-\
-export type User = z.infer<typeof createSelectSchema(users_sync)>
+export type Project = typeof projects.$inferSelect
+export type NewProject = typeof projects.$inferInsert
+export type User = typeof users_sync.$inferSelect
+export type NewUser = typeof users_sync.$inferInsert
 export type UserMetrics = typeof user_metrics.$inferSelect
 export type NewUserMetrics = typeof user_metrics.$inferInsert

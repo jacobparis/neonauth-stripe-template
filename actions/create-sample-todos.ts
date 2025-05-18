@@ -11,51 +11,20 @@ export async function createSampleTodos() {
     return { success: false, error: "Not authenticated" }
   }
 
-  const now = new Date()
-  const tomorrow = new Date(now)
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  const nextWeek = new Date(now)
-  nextWeek.setDate(nextWeek.getDate() + 7)
-
   const sampleTodos = [
-    {
-      text: "Review project proposal",
-      dueDate: tomorrow,
-      completed: false,
-      ownerId: user.id,
-      userId: user.id,
-    },
-    {
-      text: "Send weekly update to team",
-      dueDate: now,
-      completed: false,
-      ownerId: user.id,
-      userId: user.id,
-    },
-    {
-      text: "Prepare presentation slides",
-      dueDate: nextWeek,
-      completed: false,
-      ownerId: user.id,
-      userId: user.id,
-    },
-    {
-      text: "Schedule team meeting",
-      dueDate: tomorrow,
-      completed: false,
-      ownerId: user.id,
-      userId: user.id,
-    },
-    {
-      text: "Update documentation",
-      dueDate: nextWeek,
-      completed: false,
-      ownerId: user.id,
-      userId: user.id,
-    },
+    ['2025-05-19', 'Review project proposal'],
+    ['2025-05-20', 'Send weekly update to team'],
+    ['2025-05-21', 'Prepare presentation slides'],
+    ['2025-05-22', 'Schedule team meeting'],
+    ['2025-05-23', 'Update documentation'],
   ]
 
-  await db.insert(todos).values(sampleTodos)
+  await db.insert(todos).values(sampleTodos.map(([date, title]) => ({
+    title,
+    due_date: new Date(date),
+    completed: false,
+    assigned_to_id: user.id
+  })))
   
   revalidatePath("/app/todos")
   return { success: true }
