@@ -45,4 +45,4 @@ export async function deleteProject(id: number) {
     console.error("Failed to delete project:", error)
     return { error: "Failed to delete project" }
   }
-} 
+}

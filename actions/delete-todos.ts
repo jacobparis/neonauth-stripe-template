@@ -46,4 +46,4 @@ export async function bulkDeleteTodos(ids: number[]) {
     console.error("Failed to bulk delete todos:", error)
     return { error: "Failed to delete todos" }
   }
-} 
+}

@@ -46,4 +46,4 @@ export async function bulkToggleCompleted(todoIds: number[], completed: boolean)
     console.error("Failed to toggle todos completion:", error)
     return { error: "Failed to toggle todos completion" }
   }
-} 
+}

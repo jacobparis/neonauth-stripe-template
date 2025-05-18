@@ -48,4 +48,4 @@ export async function bulkUpdateProject(todoIds: number[], projectId: number | n
     console.error("Failed to update todo projects:", error)
     return { error: "Failed to update todo projects" }
   }
-} 
+}

@@ -99,4 +99,4 @@ export type NewProject = typeof projects.$inferInsert
 export type User = typeof users_sync.$inferSelect
 export type NewUser = typeof users_sync.$inferInsert
 export type UserMetrics = typeof user_metrics.$inferSelect
-export type NewUserMetrics = typeof user_metrics.$inferInsert 
+export type NewUserMetrics = typeof user_metrics.$inferInsert

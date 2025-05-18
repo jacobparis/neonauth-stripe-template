@@ -48,4 +48,4 @@ export async function bulkUpdateDueDate(todoIds: number[], dueDate: Date | null)
     console.error("Failed to update due dates:", error)
     return { error: "Failed to update due dates" }
   }
-} 
+}

@@ -40,4 +40,4 @@ export async function createCheckoutSession() {
 
   // Redirect to Stripe Checkout
   redirect(session.url)
-} 
+}
