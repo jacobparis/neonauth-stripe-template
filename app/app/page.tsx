@@ -2,16 +2,13 @@ import { stackServerApp } from "@/stack"
 import { getStripePlan } from "@/app/api/stripe/plans"
 import { Badge } from "@/components/ui/badge"
 import { IssueTracker } from "@/app/components/issue-tracker"
-import { getIssues, getIssueCount } from "@/lib/issue-actions"
+import { getIssues, getIssueCount } from "@/actions/get-issues"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
+import { PageArgs } from "@/lib/utils"
 
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams: { [key: string]: string | string[] | undefined }
-}) {
+export default async function DashboardPage({ searchParams }: PageArgs) {
   const user = await stackServerApp.getUser({ or: "redirect" })
 
   // Get the user's current plan
@@ -19,20 +16,12 @@ export default async function DashboardPage({
   const isPro = plan.id === "PRO"
 
   // Get issues for the user with error handling
-  let issues = []
-  let issueCount = 0
+  let issues = await getIssues()
+  let issueCount = await getIssueCount()
   let error = null
 
-  try {
-    issues = await getIssues()
-    issueCount = await getIssueCount()
-  } catch (err) {
-    console.error("Error loading issues:", err)
-    error = "Failed to load issues. Please try again later."
-  }
-
   // Get the current view from search params
-  const view = (searchParams.view as string) || "all"
+  const { view = "all" } = await searchParams
 
   // Filter issues based on the view
   const filteredIssues = issues.filter((issue) => {
@@ -49,15 +38,22 @@ export default async function DashboardPage({
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold">
-            {view === "all" ? "All Issues" : view === "active" ? "Active Issues" : "Backlog Issues"}
+            {view === "all"
+              ? "All Issues"
+              : view === "active"
+              ? "Active Issues"
+              : "Backlog Issues"}
           </h1>
           <p className="text-muted-foreground text-sm mt-0.5">
-            Welcome back, {user.displayName || "User"}. You're on the {isPro ? "Pro" : "Free"} plan.
+            Welcome back, {user.displayName || "User"}. You're on the{" "}
+            {isPro ? "Pro" : "Free"} plan.
           </p>
         </div>
         <div className="flex items-center gap-2">
           {isPro ? (
-            <Badge className="bg-primary text-primary-foreground text-xs">PRO</Badge>
+            <Badge className="bg-primary text-primary-foreground text-xs">
+              PRO
+            </Badge>
           ) : (
             <Button variant="outline" size="sm" asChild className="h-7 text-xs">
               <a href="/app/settings/account">Upgrade to Pro</a>
@@ -74,7 +70,11 @@ export default async function DashboardPage({
         </Alert>
       ) : (
         <div className="space-y-4">
-          <IssueTracker initialIssues={filteredIssues} isPro={isPro} issueCount={issueCount} />
+          <IssueTracker
+            initialIssues={filteredIssues}
+            isPro={isPro}
+            issueCount={issueCount}
+          />
         </div>
       )}
     </div>

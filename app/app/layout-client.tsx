@@ -6,8 +6,23 @@ import type React from "react"
 
 import Link from "next/link"
 import Image from "next/image"
-import { Settings, Home, Plus, Search, CheckCircle, Circle, AlertCircleIcon, Clock, MoreHorizontal } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  Settings,
+  Home,
+  Plus,
+  Search,
+  CheckCircle,
+  Circle,
+  AlertCircleIcon,
+  Clock,
+  MoreHorizontal,
+} from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { useUser } from "@stackframe/stack"
 import { useStackApp } from "@stackframe/stack"
@@ -25,7 +40,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { createIssue } from "@/lib/issue-actions"
 import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -50,8 +71,6 @@ export function AppLayoutClient({ children }: { children: React.ReactNode }) {
     setIsPending(true)
 
     const title = formData.get("title") as string
-    const description = (formData.get("description") as string) || null
-    const priority = (formData.get("priority") as "low" | "medium" | "high") || "medium"
 
     if (!title) {
       setCreateError("Title is required")
@@ -134,7 +153,11 @@ export function AppLayoutClient({ children }: { children: React.ReactNode }) {
         {user ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="flex items-center gap-2 h-7 px-2 ml-2 rounded-full">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex items-center gap-2 h-7 px-2 ml-2 rounded-full"
+              >
                 {user.profileImageUrl ? (
                   <Image
                     src={user.profileImageUrl || "/placeholder.svg"}
@@ -146,22 +169,33 @@ export function AppLayoutClient({ children }: { children: React.ReactNode }) {
                 ) : (
                   <div className="w-5 h-5 rounded-full bg-secondary flex items-center justify-center">
                     <span className="text-foreground/80 text-xs">
-                      {user.displayName ? user.displayName[0].toUpperCase() : "U"}
+                      {user.displayName
+                        ? user.displayName[0].toUpperCase()
+                        : "U"}
                     </span>
                   </div>
                 )}
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="dark:bg-card dark:border-border/50">
+            <DropdownMenuContent
+              align="end"
+              className="dark:bg-card dark:border-border/50"
+            >
               <DropdownMenuItem asChild>
-                <Link href="/app/settings/profile" className="flex items-center gap-2">
+                <Link
+                  href="/app/settings/profile"
+                  className="flex items-center gap-2"
+                >
                   <Settings className="h-3.5 w-3.5" />
                   Settings
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/handler/sign-out" className="flex items-center gap-2">
+                <Link
+                  href="/handler/sign-out"
+                  className="flex items-center gap-2"
+                >
                   Sign Out
                 </Link>
               </DropdownMenuItem>
@@ -204,7 +238,8 @@ export function AppLayoutClient({ children }: { children: React.ReactNode }) {
                 <DialogHeader>
                   <DialogTitle>Create New Issue</DialogTitle>
                   <DialogDescription>
-                    Add a new issue to track. Be descriptive to help with resolution.
+                    Add a new issue to track. Be descriptive to help with
+                    resolution.
                   </DialogDescription>
                 </DialogHeader>
                 <form action={handleCreateIssue}>
@@ -213,10 +248,18 @@ export function AppLayoutClient({ children }: { children: React.ReactNode }) {
                       <label htmlFor="title" className="text-sm font-medium">
                         Title
                       </label>
-                      <Input id="title" name="title" placeholder="Brief description of the issue" required />
+                      <Input
+                        id="title"
+                        name="title"
+                        placeholder="Brief description of the issue"
+                        required
+                      />
                     </div>
                     <div className="grid gap-2">
-                      <label htmlFor="description" className="text-sm font-medium">
+                      <label
+                        htmlFor="description"
+                        className="text-sm font-medium"
+                      >
                         Description
                       </label>
                       <Textarea
@@ -287,7 +330,9 @@ export function AppLayoutClient({ children }: { children: React.ReactNode }) {
           </nav>
 
           <div className="mt-4 px-2">
-            <h3 className="text-[10px] font-medium text-muted-foreground mb-1.5 px-1.5">VIEWS</h3>
+            <h3 className="text-[10px] font-medium text-muted-foreground mb-1.5 px-1.5">
+              VIEWS
+            </h3>
             <nav className="space-y-0.5">
               <button
                 onClick={() => navigateToView("all")}
