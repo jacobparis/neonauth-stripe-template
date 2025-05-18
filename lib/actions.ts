@@ -33,9 +33,7 @@ export async function getProjects() {
 
 export async function getUsers() {
   try {
-    return await db.select().from(users_sync)
-      .where(isNull(users_sync.deleted_at))
-      .orderBy(users_sync.name)
+    return await db.select().from(users_sync).where(isNull(users_sync.deleted_at)).orderBy(users_sync.name)
   } catch (error) {
     console.error("Failed to fetch users:", error)
     return []
@@ -43,12 +41,12 @@ export async function getUsers() {
 }
 
 export async function addTodo(formData: FormData) {
-  const text = formData.get("text") as string
+  const title = formData.get("text") as string // Keep the form field name as "text" for backward compatibility
   const dueDateStr = formData.get("dueDate") as string | null
   const projectIdStr = formData.get("projectId") as string | null
 
-  if (!text?.trim()) {
-    return { error: "Todo text is required" }
+  if (!title?.trim()) {
+    return { error: "Todo title is required" }
   }
 
   const user = await stackServerApp.getUser({ or: "redirect" })
@@ -58,41 +56,40 @@ export async function addTodo(formData: FormData) {
 
   try {
     let userMetrics = await db.query.user_metrics.findFirst({
-      where: eq(user_metrics.userId, user.id)
+      where: eq(user_metrics.userId, user.id),
     })
-    
+
     if (!userMetrics) {
       // Create initial metrics record for user
-      const [newMetrics] = await db.insert(user_metrics)
-        .values({ userId: user.id, todosCreated: 0 })
-        .returning()
+      const [newMetrics] = await db.insert(user_metrics).values({ userId: user.id, todosCreated: 0 }).returning()
       userMetrics = newMetrics
     }
 
-    // Count total todos 
-    const totalTodos = await db.select({ count: count() }).from(todos).then(
-      result => result[0]?.count ?? 0
-    )
-    
+    // Count total todos
+    const totalTodos = await db
+      .select({ count: count() })
+      .from(todos)
+      .then((result) => result[0]?.count ?? 0)
+
     const plan = await getStripePlan(user.id)
     if (totalTodos >= plan.todoLimit) {
       return { error: "You have reached your todo limit. Delete some todos to create new ones." }
     }
-    
+
     await db.insert(todos).values({
-      text,
+      title, // Use title instead of text
       dueDate: dueDateStr ? new Date(dueDateStr) : null,
       projectId: projectIdStr ? Number.parseInt(projectIdStr) : null,
     })
-    
 
-    await db.update(user_metrics)
-      .set({ 
+    await db
+      .update(user_metrics)
+      .set({
         todosCreated: userMetrics.todosCreated + 1,
-        updatedAt: new Date()
+        updatedAt: new Date(),
       })
       .where(eq(user_metrics.id, userMetrics.id))
-    
+
     revalidatePath("/")
     return { success: true }
   } catch (error) {
@@ -122,11 +119,11 @@ export async function getCurrentUserTodosCreated() {
     if (!user) {
       return 0
     }
-    
+
     const userMetrics = await db.query.user_metrics.findFirst({
-      where: eq(user_metrics.userId, user.id)
+      where: eq(user_metrics.userId, user.id),
     })
-    
+
     return userMetrics?.todosCreated ?? 0
   } catch (error) {
     console.error("Failed to get user's total created todos:", error)
@@ -138,24 +135,22 @@ export async function getUserTodoMetrics(userId: string) {
   try {
     // Get or create user metrics
     let userMetrics = await db.query.user_metrics.findFirst({
-      where: eq(user_metrics.userId, userId)
+      where: eq(user_metrics.userId, userId),
     })
-    
+
     if (!userMetrics) {
       // Create initial metrics record for user
-      const [newMetrics] = await db.insert(user_metrics)
-        .values({ userId, todosCreated: 0 })
-        .returning()
+      const [newMetrics] = await db.insert(user_metrics).values({ userId, todosCreated: 0 }).returning()
       userMetrics = newMetrics
     }
-    
+
     // Get the user's plan details
     const plan = await getStripePlan(userId)
-    
-    return { 
+
+    return {
       todosCreated: userMetrics.todosCreated,
       todoLimit: plan.todoLimit,
-      subscription: plan.id
+      subscription: plan.id,
     }
   } catch (error) {
     console.error("Failed to get user todo metrics:", error)
@@ -167,23 +162,23 @@ export async function resetUserTodosCreated(userId: string) {
   try {
     // Find the user metrics
     const userMetrics = await db.query.user_metrics.findFirst({
-      where: eq(user_metrics.userId, userId)
+      where: eq(user_metrics.userId, userId),
     })
-    
+
     if (userMetrics) {
       // Update existing metrics
-      await db.update(user_metrics)
-        .set({ 
+      await db
+        .update(user_metrics)
+        .set({
           todosCreated: 0,
-          updatedAt: new Date()
+          updatedAt: new Date(),
         })
         .where(eq(user_metrics.id, userMetrics.id))
     } else {
       // Create new metrics with 0 todos
-      await db.insert(user_metrics)
-        .values({ userId, todosCreated: 0 })
+      await db.insert(user_metrics).values({ userId, todosCreated: 0 })
     }
-      
+
     revalidatePath("/")
     return { success: true }
   } catch (error) {
