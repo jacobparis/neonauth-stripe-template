@@ -3,7 +3,15 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { AlertTriangle, Mail, Shield, Eye, EyeOff, TrashIcon, Loader2 } from "lucide-react"
+import {
+  AlertTriangle,
+  Mail,
+  Shield,
+  Eye,
+  EyeOff,
+  TrashIcon,
+  Loader2,
+} from "lucide-react"
 import { startTransition, useOptimistic, useRef, useState } from "react"
 import { useUser } from "@stackframe/stack"
 import {
@@ -78,8 +86,12 @@ export function AccountPageClient({
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
-  const [pendingVerificationId, setPendingVerificationId] = useState<string | null>(null)
-  const [verificationErrors, setVerificationErrors] = useState<Record<string, string>>({})
+  const [pendingVerificationId, setPendingVerificationId] = useState<
+    string | null
+  >(null)
+  const [verificationErrors, setVerificationErrors] = useState<
+    Record<string, string>
+  >({})
 
   const [contactChannels, sendChannelEvent] = useOptimistic(
     serverContactChannels,
@@ -121,7 +133,13 @@ export function AccountPageClient({
     <div>
       {/* Subscription Card */}
       <div className="mb-8">
-        <SubscriptionCard userId={userId} email={email} name={name} plan={plan} subscription={subscription} />
+        <SubscriptionCard
+          userId={userId}
+          email={email}
+          name={name}
+          plan={plan}
+          subscription={subscription}
+        />
       </div>
 
       <Separator className="my-8 opacity-30" />
@@ -132,15 +150,19 @@ export function AccountPageClient({
           <Mail className="h-5 w-5" />
           Email Addresses
         </h2>
-        <p className="text-sm text-muted-foreground mt-1">Manage the email addresses associated with your account.</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Manage the email addresses associated with your account.
+        </p>
 
-        <div className="mt-4 space-y-4 max-w-md">
+        <div className="mt-4 space-y-4">
           {contactChannels.map((channel) => (
             <div key={channel.id} className="p-3 rounded-md bg-secondary/50">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{channel.value}</span>
-                  {channel.isPrimary && <Badge variant="secondary">Primary</Badge>}
+                  {channel.isPrimary && (
+                    <Badge variant="secondary">Primary</Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   {channel.isVerified ? (
@@ -148,29 +170,48 @@ export function AccountPageClient({
                       !channel.usedForAuth && user.hasPassword ? (
                         <form
                           action={async (formData) => {
-                            sendChannelEvent({ type: "makePrimary", id: channel.id })
+                            sendChannelEvent({
+                              type: "makePrimary",
+                              id: channel.id,
+                            })
                             await makePrimaryContactChannel(formData)
                           }}
                         >
                           <input type="hidden" name="id" value={channel.id} />
-                          <Button type="submit" variant="outline" size="sm" className="h-8 bg-secondary/80">
+                          <Button
+                            type="submit"
+                            variant="outline"
+                            size="sm"
+                            className="h-8 bg-secondary/80"
+                          >
                             Use for Auth
                           </Button>
                         </form>
                       ) : (
-                        <Badge variant="outline" className="bg-green-900/20 text-green-400 border-green-800/30">
+                        <Badge
+                          variant="outline"
+                          className="bg-green-900/20 text-green-400 border-green-800/30"
+                        >
                           Verified
                         </Badge>
                       )
                     ) : (
                       <form
                         action={async (formData) => {
-                          sendChannelEvent({ type: "makePrimary", id: channel.id })
+                          sendChannelEvent({
+                            type: "makePrimary",
+                            id: channel.id,
+                          })
                           await makePrimaryContactChannel(formData)
                         }}
                       >
                         <input type="hidden" name="id" value={channel.id} />
-                        <Button type="submit" variant="outline" size="sm" className="h-8 bg-secondary/80">
+                        <Button
+                          type="submit"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 bg-secondary/80"
+                        >
                           Make Primary
                         </Button>
                       </form>
@@ -181,7 +222,10 @@ export function AccountPageClient({
                         e.preventDefault()
                         const formData = new FormData(e.currentTarget)
                         setPendingVerificationId(channel.id)
-                        setVerificationErrors((prev) => ({ ...prev, [channel.id]: "" }))
+                        setVerificationErrors((prev) => ({
+                          ...prev,
+                          [channel.id]: "",
+                        }))
                         startTransition(async () => {
                           try {
                             await sendVerificationEmail(formData)
@@ -190,7 +234,9 @@ export function AccountPageClient({
                             setVerificationErrors((prev) => ({
                               ...prev,
                               [channel.id]:
-                                error instanceof Error ? error.message : "Failed to send verification email",
+                                error instanceof Error
+                                  ? error.message
+                                  : "Failed to send verification email",
                             }))
                           }
                         })
@@ -215,7 +261,9 @@ export function AccountPageClient({
                           >
                             Try again
                           </Button>
-                          <p className="text-xs text-red-400">{verificationErrors[channel.id]}</p>
+                          <p className="text-xs text-red-400">
+                            {verificationErrors[channel.id]}
+                          </p>
                         </div>
                       ) : (
                         <Button
@@ -247,12 +295,20 @@ export function AccountPageClient({
                   {!channel.isPrimary && (
                     <form
                       action={async (formData) => {
-                        sendChannelEvent({ type: "removeEmail", id: channel.id })
+                        sendChannelEvent({
+                          type: "removeEmail",
+                          id: channel.id,
+                        })
                         await deleteContactChannel(formData)
                       }}
                     >
                       <input type="hidden" name="id" value={channel.id} />
-                      <Button variant="ghost" size="sm" type="submit" className="text-muted-foreground">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        type="submit"
+                        className="text-muted-foreground"
+                      >
                         <TrashIcon className="h-4 w-4" />
                         <span className="sr-only">Remove</span>
                       </Button>
@@ -266,7 +322,10 @@ export function AccountPageClient({
           <form
             ref={formRef}
             action={async (formData) => {
-              sendChannelEvent({ type: "addEmail", email: formData.get("email") as string })
+              sendChannelEvent({
+                type: "addEmail",
+                email: formData.get("email") as string,
+              })
               formRef.current?.reset()
               await addContactChannel(formData)
             }}
@@ -293,9 +352,11 @@ export function AccountPageClient({
           <Shield className="h-5 w-5" />
           Password
         </h2>
-        <p className="text-sm text-muted-foreground mt-1">Update your password to keep your account secure.</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Update your password to keep your account secure.
+        </p>
 
-        <div className="mt-6 space-y-4 max-w-md">
+        <div className="mt-6 space-y-4">
           <form
             action={async (formData) => {
               setIsUpdatingPassword(true)
@@ -307,13 +368,19 @@ export function AccountPageClient({
                 if (result.success) {
                   setPasswordSuccess("Password updated successfully")
                   // Reset form fields
-                  const form = document.getElementById("password-form") as HTMLFormElement
+                  const form = document.getElementById(
+                    "password-form",
+                  ) as HTMLFormElement
                   if (form) form.reset()
                 } else {
                   setPasswordError(result.error)
                 }
               } catch (error) {
-                setPasswordError(error instanceof Error ? error.message : "An unexpected error occurred")
+                setPasswordError(
+                  error instanceof Error
+                    ? error.message
+                    : "An unexpected error occurred",
+                )
               } finally {
                 setIsUpdatingPassword(false)
               }
@@ -343,7 +410,9 @@ export function AccountPageClient({
                       variant="ghost"
                       size="sm"
                       className="absolute right-0 top-0 h-full"
-                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                      onClick={() =>
+                        setShowCurrentPassword(!showCurrentPassword)
+                      }
                       disabled={isUpdatingPassword}
                     >
                       {showCurrentPassword ? (
@@ -351,7 +420,11 @@ export function AccountPageClient({
                       ) : (
                         <Eye className="h-4 w-4 text-muted-foreground" />
                       )}
-                      <span className="sr-only">{showCurrentPassword ? "Hide password" : "Show password"}</span>
+                      <span className="sr-only">
+                        {showCurrentPassword
+                          ? "Hide password"
+                          : "Show password"}
+                      </span>
                     </Button>
                   </div>
                 </div>
@@ -385,7 +458,9 @@ export function AccountPageClient({
                     ) : (
                       <Eye className="h-4 w-4 text-muted-foreground" />
                     )}
-                    <span className="sr-only">{showNewPassword ? "Hide password" : "Show password"}</span>
+                    <span className="sr-only">
+                      {showNewPassword ? "Hide password" : "Show password"}
+                    </span>
                   </Button>
                 </div>
               </div>
@@ -393,12 +468,20 @@ export function AccountPageClient({
 
             <div className="mt-3">
               {passwordError && (
-                <div id="password-error" aria-live="polite" className="text-sm text-red-400 mb-3">
+                <div
+                  id="password-error"
+                  aria-live="polite"
+                  className="text-sm text-red-400 mb-3"
+                >
                   {passwordError}
                 </div>
               )}
               {passwordSuccess && (
-                <div id="password-success" aria-live="polite" className="text-sm text-green-400 mb-3">
+                <div
+                  id="password-success"
+                  aria-live="polite"
+                  className="text-sm text-green-400 mb-3"
+                >
                   {passwordSuccess}
                 </div>
               )}
@@ -428,14 +511,16 @@ export function AccountPageClient({
       <Separator className="my-8 opacity-30" />
 
       {/* Danger Zone - Simplified */}
-      <div className="mt-8 max-w-md p-4 rounded-md border border-destructive/20 bg-destructive/5">
+      <div className="mt-8 p-4 rounded-md border border-destructive/20 bg-destructive/5">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-medium text-destructive flex items-center gap-1">
               <AlertTriangle className="h-4 w-4" />
               Delete Account
             </h3>
-            <p className="text-xs text-muted-foreground">Permanently delete your account and all data.</p>
+            <p className="text-xs text-muted-foreground">
+              Permanently delete your account and all data.
+            </p>
           </div>
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -451,16 +536,20 @@ export function AccountPageClient({
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 {deleteError ? (
-                  <AlertDialogDescription className="text-destructive">{deleteError}</AlertDialogDescription>
+                  <AlertDialogDescription className="text-destructive">
+                    {deleteError}
+                  </AlertDialogDescription>
                 ) : (
                   <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete your account and remove all your data
-                    from our servers.
+                    This action cannot be undone. This will permanently delete
+                    your account and remove all your data from our servers.
                   </AlertDialogDescription>
                 )}
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel className="dark:bg-secondary/80 dark:hover:bg-secondary">Cancel</AlertDialogCancel>
+                <AlertDialogCancel className="dark:bg-secondary/80 dark:hover:bg-secondary">
+                  Cancel
+                </AlertDialogCancel>
                 <form
                   action={async () => {
                     const result = await deleteAccount()

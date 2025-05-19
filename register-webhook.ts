@@ -15,7 +15,7 @@ if (!VERCEL_URL) {
 
 // Initialize Stripe
 const stripe = new Stripe(STRIPE_SECRET_KEY, {
-  apiVersion: "2025-02-24.acacia",
+  apiVersion: "2025-04-30.basil",
 })
 
 // Define the events to listen for (same as in stripe.dev.ts)
