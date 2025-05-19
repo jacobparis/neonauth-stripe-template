@@ -2,4 +2,4 @@
 ALTER TABLE todos DROP COLUMN project_id;
 
 -- Drop projects table
-DROP TABLE projects; 
+DROP TABLE projects;

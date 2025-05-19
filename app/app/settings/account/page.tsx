@@ -4,11 +4,14 @@ import { AccountPageClient } from "./page-client"
 import { verifyContactChannel } from "../profile/actions"
 import { getStripeCustomerId, getStripeCustomer } from "@/lib/stripe"
 import { getStripePlan } from "@/app/api/stripe/plans"
-import { PageProps } from "@/.next/types/app/app/settings/account/page"
 
-export default async function AccountPage({ searchParams }: PageProps) {
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Record<string, string | string[] | undefined>
+}) {
   const user = await stackServerApp.getUser({ or: "redirect" })
-  const { code } = await searchParams
+  const code = searchParams.code
 
   if (code && !Array.isArray(code)) {
     // Handle contact channel verification
