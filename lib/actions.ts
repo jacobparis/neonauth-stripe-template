@@ -1,8 +1,8 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { db } from "./db"
-import { todos, projects, users_sync, user_metrics } from "./schema"
+import { db } from "@/lib/db"
+import { todos, user_metrics, users_sync } from "@/lib/schema"
 import { eq, desc, count, isNull } from "drizzle-orm"
 import { getStripePlan } from "@/app/api/stripe/plans"
 import { stackServerApp, getAccessToken } from "@/stack"
@@ -15,18 +15,11 @@ export async function getTodos() {
   }
 
   try {
-    return await db.select().from(todos).orderBy(todos.id)
+    const items =  await db.select().from(todos).orderBy(todos.id)
+    console.log(items)
+    return items
   } catch (error) {
     console.error("Failed to fetch todos:", error)
-    return []
-  }
-}
-
-export async function getProjects() {
-  try {
-    return await db.select().from(projects).orderBy(desc(projects.createdAt))
-  } catch (error) {
-    console.error("Failed to fetch projects:", error)
     return []
   }
 }
@@ -43,7 +36,6 @@ export async function getUsers() {
 export async function addTodo(formData: FormData) {
   const title = formData.get("text") as string // Keep the form field name as "text" for backward compatibility
   const dueDateStr = formData.get("dueDate") as string | null
-  const projectIdStr = formData.get("projectId") as string | null
 
   if (!title?.trim()) {
     return { error: "Todo title is required" }
@@ -79,7 +71,6 @@ export async function addTodo(formData: FormData) {
     await db.insert(todos).values({
       title, // Use title instead of text
       dueDate: dueDateStr ? new Date(dueDateStr) : null,
-      projectId: projectIdStr ? Number.parseInt(projectIdStr) : null,
     })
 
     await db

@@ -23,52 +23,17 @@ export const user_metrics = pgTable("user_metrics", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 })
 
-export const projects = pgTable("projects", {
+export const todos = pgTable("todos", {
   id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  description: text("description"),
+  title: varchar("title", { length: 255 }).notNull(),
+  completed: boolean("completed").notNull().default(false),
+  dueDate: timestamp("due_date"),
+  assignedToId: varchar("assigned_to_id", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 })
 
-export const todos = pgTable(
-  "todos",
-  {
-    id: serial("id").primaryKey(),
-    title: varchar("title", { length: 255 }).notNull(),
-    completed: boolean("completed").default(false).notNull(),
-    dueDate: timestamp("due_date"),
-    projectId: integer("project_id"),
-    assignedToId: varchar("assigned_to_id", { length: 255 }),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-    updatedAt: timestamp("updated_at").defaultNow().notNull(),
-  },
-  ({}) => ({
-    p1: pgPolicy("view todos", {
-      for: "select",
-      to: "authenticated",
-      using: sql`auth.user_id() = assigned_to_id`,
-    }),
-
-    p2: pgPolicy("update todos", {
-      for: "update",
-      to: "authenticated",
-      using: sql`auth.user_id() = assigned_to_id`,
-    }),
-
-    p3: pgPolicy("delete todos", {
-      for: "delete",
-      to: "authenticated",
-      using: sql`auth.user_id() = assigned_to_id`,
-    }),
-  }),
-)
-
 // Define relations
-export const projectsRelations = relations(projects, ({ many }) => ({
-  todos: many(todos),
-}))
-
 export const usersRelations = relations(users_sync, ({ many }) => ({
   assignedTodos: many(todos, { relationName: "assignedTodos" }),
   metrics: many(user_metrics, { relationName: "metrics" }),
@@ -83,10 +48,6 @@ export const userMetricsRelations = relations(user_metrics, ({ one }) => ({
 }))
 
 export const todosRelations = relations(todos, ({ one }) => ({
-  project: one(projects, {
-    fields: [todos.projectId],
-    references: [projects.id],
-  }),
   assignedTo: one(users_sync, {
     fields: [todos.assignedToId],
     references: [users_sync.id],
@@ -98,10 +59,8 @@ export const insertTodoSchema = createInsertSchema(todos)
 export const selectTodoSchema = createSelectSchema(todos)
 
 // Types for use in the application
-export type Todo = z.infer<typeof selectTodoSchema>
-export type NewTodo = z.infer<typeof insertTodoSchema>
-export type Project = typeof projects.$inferSelect
-export type NewProject = typeof projects.$inferInsert
+export type Todo = typeof todos.$inferSelect
+export type NewTodo = typeof todos.$inferInsert
 export type User = typeof users_sync.$inferSelect
 export type NewUser = typeof users_sync.$inferInsert
 export type UserMetrics = typeof user_metrics.$inferSelect

@@ -5,7 +5,6 @@ export type QueueTask =
   | { type: "deleteTodo"; key: `delete-todo-${number}`; id: number }
   | { type: "deleteTodos"; key: `delete-todos-${string}`; ids: number[] }
   | { type: "updateDueDate"; key: `update-due-date-${string}`; ids: number[]; dueDate: string | null }
-  | { type: "updateProject"; key: `update-project-${string}`; ids: number[]; projectId: number | null }
   | { type: "toggleCompleted"; key: `toggle-completed-${string}`; ids: number[]; completed: boolean }
 
 export async function POST(req: Request) {

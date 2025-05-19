@@ -1,556 +1,794 @@
 "use client"
-import { useState } from "react"
-import type React from "react"
-
+import { useOptimistic, useTransition, useState } from "react"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { addTodo } from "@/lib/actions"
 import { deleteTodo, bulkDeleteTodos } from "@/actions/delete-todos"
-import { bulkUpdateDueDate } from "@/actions/update-due-date"
-import { bulkUpdateProject } from "@/actions/update-project"
+import { updateDueDate, bulkUpdateDueDate } from "@/actions/update-due-date"
 import { bulkToggleCompleted } from "@/actions/toggle-completed"
-import { toggleCompleted } from "@/actions/toggle-completed"
-import { updateDueDate as updateDueDateAction } from "@/actions/update-due-date"
-import { Plus, Trash, X, Tag, CalendarIcon } from "lucide-react"
-import type { Todo, Project } from "@/lib/schema"
+import { createSampleTodos } from "@/actions/create-sample-todos"
+import { redirectToCheckout } from "@/app/api/stripe/client"
+import {
+	Search,
+	Plus,
+	Trash,
+	X,
+	AlertCircle,
+	Clock,
+	CalendarIcon,
+	CreditCard,
+	Zap,
+	MoreVertical,
+} from "lucide-react"
+import type { Todo } from "@/lib/schema"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { format } from "date-fns"
-import { ProjectSelector } from "./project-selector"
-import { ProjectBadge } from "./project-badge"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { cn } from "@/lib/utils"
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+	DialogDescription,
+	DialogFooter,
+} from "@/components/ui/dialog"
+import { Progress } from "@/components/ui/progress"
+import { groupTodosByDueDate } from "./utils"
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 function AddTodoForm({
-  onAddTodo,
-  onClose,
-  projects,
-  onProjectAdded,
+	onAddTodo,
+	onClose,
 }: {
-  onAddTodo: (todo: Todo) => void
-  onClose: () => void
-  projects: Project[]
-  onProjectAdded?: (project: Project) => void
+	onAddTodo: (todo: Todo) => void
+	onClose: () => void
 }) {
-  const [selectedDueDate, setSelectedDueDate] = useState<Date | undefined>(undefined)
-  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null)
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false)
-  const [todoText, setTodoText] = useState("")
+	const [selectedDueDate, setSelectedDueDate] = useState<Date | undefined>(undefined)
+	const [isCalendarOpen, setIsCalendarOpen] = useState(false)
+	const [todoText, setTodoText] = useState("")
 
-  const selectedProject = projects.find((p) => p.id === selectedProjectId)
+	async function handleAction(formData: FormData) {
+		const text = formData.get("text") as string
 
-  async function handleAction(formData: FormData) {
-    const text = formData.get("text") as string
+		if (!text?.trim()) return
 
-    if (!text?.trim()) return
+		// Add due date to form data if selected
+		if (selectedDueDate) {
+			formData.append("dueDate", selectedDueDate.toISOString())
+		}
 
-    // Add due date to form data if selected
-    if (selectedDueDate) {
-      formData.append("dueDate", selectedDueDate.toISOString())
-    }
+		// Create an optimistic todo with a temporary negative ID
+		const optimisticTodo: Todo = {
+			id: -Math.floor(Math.random() * 1000) - 1,
+			title: text,
+			completed: false,
+			dueDate: selectedDueDate || null,
+			assignedToId: null,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		}
 
-    // Add project ID to form data if selected
-    if (selectedProjectId !== null) {
-      formData.append("projectId", selectedProjectId.toString())
-    }
+		// Add optimistic todo to the UI
+		onAddTodo(optimisticTodo)
 
-    // Create an optimistic todo with a temporary negative ID
-    const optimisticTodo: Todo = {
-      id: -Math.floor(Math.random() * 1000) - 1,
-      text,
-      completed: false,
-      dueDate: selectedDueDate || null,
-      projectId: selectedProjectId,
-      userId: null,
-      ownerId: null,
-    }
+		// Reset form state
+		setTodoText("")
+		setSelectedDueDate(undefined)
+		onClose()
 
-    // Add optimistic todo to the UI
-    onAddTodo(optimisticTodo)
+		// Send the actual request (non-blocking)
+		addTodo(formData)
+	}
 
-    // Reset form state
-    setTodoText("")
-    setSelectedDueDate(undefined)
-    setSelectedProjectId(null)
-    onClose()
+	return (
+		<form action={handleAction} className="space-y-4">
+			<div className="space-y-2">
+				<label htmlFor="todo-text" className="text-sm font-medium">
+					Task
+				</label>
+				<Input
+					id="todo-text"
+					type="text"
+					name="text"
+					placeholder="What needs to be done?"
+					required
+					value={todoText}
+					onChange={(e) => setTodoText(e.target.value)}
+					autoFocus
+				/>
+			</div>
 
-    // Send the actual request (non-blocking)
-    addTodo(formData)
-  }
+			<div className="flex items-center gap-2">
+				<Popover modal open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+					<PopoverTrigger asChild>
+						<Button type="button" variant="outline" size="sm">
+							<CalendarIcon className="h-4 w-4 mr-2" />
+							{selectedDueDate ? format(selectedDueDate, "PPP") : "Select a date"}
+						</Button>
+					</PopoverTrigger>
+					<PopoverContent className="w-auto p-0" align="start">
+						<Calendar
+							mode="single"
+							selected={selectedDueDate}
+							onSelect={(date) => {
+								setSelectedDueDate(date)
+								setIsCalendarOpen(false)
+							}}
+							initialFocus
+						/>
+					</PopoverContent>
+				</Popover>
 
-  return (
-    <form action={handleAction} className="space-y-4">
-      <div className="space-y-2">
-        <label htmlFor="todo-text" className="text-sm font-medium">
-          Task
-        </label>
-        <Input
-          id="todo-text"
-          type="text"
-          name="text"
-          placeholder="What needs to be done?"
-          required
-          value={todoText}
-          onChange={(e) => setTodoText(e.target.value)}
-          autoFocus
-        />
-      </div>
+				{selectedDueDate && (
+					<Button
+						type="button"
+						variant="ghost"
+						size="sm"
+						onClick={() => setSelectedDueDate(undefined)}
+						className="h-8 px-2"
+					>
+						<X className="h-4 w-4" />
+						<span className="sr-only">Clear date</span>
+					</Button>
+				)}
+			</div>
 
-      <div className="flex items-center gap-2">
-        <ProjectSelector
-          projects={projects}
-          selectedProjectId={selectedProjectId}
-          onSelectProject={setSelectedProjectId}
-          onProjectAdded={onProjectAdded}
-          asChild
-        >
-          {selectedProject ? (
-            <button type="button">
-              <ProjectBadge project={selectedProject} className="mr-2" />
-            </button>
-          ) : (
-            <Button type="button" variant="outline" size="xs">
-              <Tag className="h-3 w-3 mr-1" />
-              <span>Project</span>
-            </Button>
-          )}
-        </ProjectSelector>
-
-        <div className="flex items-center gap-2">
-          <Popover modal open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-            <PopoverTrigger asChild>
-              <Button type="button" variant="outline" size="xs">
-                <CalendarIcon className="h-4 w-4 mr-2" />
-                {selectedDueDate ? format(selectedDueDate, "PPP") : "Select a date"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={selectedDueDate}
-                onSelect={(date) => {
-                  setSelectedDueDate(date)
-                  setIsCalendarOpen(false)
-                }}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-
-          {selectedDueDate && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedDueDate(undefined)}
-              className="h-8 px-2"
-            >
-              <X className="h-4 w-4" />
-              <span className="sr-only">Clear date</span>
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <Button type="submit">
-        <Plus className="h-4 w-4 mr-2" />
-        Add deadline
-      </Button>
-    </form>
-  )
+			<Button type="submit">
+				<Plus className="h-4 w-4 mr-2" />
+				Add deadline
+			</Button>
+		</form>
+	)
 }
 
 export function TodosPageClient({
-  todos: initialTodos,
-  projects,
-  todoLimit,
+	todos,
+	todoLimit,
+	userId,
+	email,
+	name,
 }: {
-  todos: Todo[]
-  projects: Project[]
-  todoLimit: number
+	todos: Todo[]
+	todoLimit: number
+	userId: string
+	email: string
+	name: string | null
 }) {
-  const [todos, setTodos] = useState(initialTodos)
-  const [newTodoText, setNewTodoText] = useState("")
-  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null)
-  const [dueDate, setDueDate] = useState<string>("")
-  const [error, setError] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedTodoIds, setSelectedTodoIds] = useState<Set<number>>(new Set())
-  const [isAddTodoOpen, setIsAddTodoOpen] = useState(false)
-  const [isRescheduleCalendarOpen, setIsRescheduleCalendarOpen] = useState(false)
-  const [rescheduleDate, setRescheduleDate] = useState<Date>()
-  const [optimisticProjects, setOptimisticProjects] = useState<Project[]>(projects)
+	const [, startTransition] = useTransition()
+	const [searchQuery, setSearchQuery] = useState("")
+	const [selectedTodoIds, setSelectedTodoIds] = useState<Set<number>>(new Set())
+	const [isRescheduleCalendarOpen, setIsRescheduleCalendarOpen] = useState(false)
+	const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(undefined)
+	const [isAddTodoOpen, setIsAddTodoOpen] = useState(false)
+	const [isLoading, setIsLoading] = useState(false)
 
-  // Track pending bulk edits
-  type PendingEdit =
-    | { type: "delete"; ids: Set<number> }
-    | { type: "reschedule"; ids: Set<number>; dueDate: Date | null }
-    | { type: "moveToProject"; ids: Set<number>; projectId: number | null }
-    | { type: "toggleCompleted"; ids: Set<number>; completed: boolean }
+	// Track pending bulk edits
+	type PendingEdit =
+		| { type: "delete"; ids: Set<number> }
+		| { type: "reschedule"; ids: Set<number>; dueDate: Date | null }
+		| { type: "toggleCompleted"; ids: Set<number>; completed: boolean }
 
-  const [pendingEdits, setPendingEdits] = useState<PendingEdit[]>([])
+	const [pendingEdits, setPendingEdits] = useState<PendingEdit[]>([])
 
-  // Optimistic state management for single-todo actions
-  const [optimisticTodos, updateOptimisticTodos] = useState<Todo[]>(initialTodos)
+	// Optimistic state management for single-todo actions
+	const [optimisticTodos, updateOptimisticTodos] = useOptimistic(
+		todos,
+		(state, action: 
+			| { type: "add"; todo: Todo } 
+			| { type: "delete"; id: number }
+			| { type: "updateDueDate"; id: number; dueDate: Date | null }
+			| { type: "toggleCompleted"; id: number; completed: boolean }
+		) => {
+			if (action.type === "add") {
+				return [...state, action.todo]
+			} else if (action.type === "delete") {
+				return state.filter((todo) => todo.id !== action.id)
+			} else if (action.type === "updateDueDate") {
+				return state.map((todo) => 
+					todo.id === action.id 
+						? { ...todo, dueDate: action.dueDate }
+						: todo
+				)
+			} else if (action.type === "toggleCompleted") {
+				return state.map((todo) => 
+					todo.id === action.id 
+						? { ...todo, completed: action.completed }
+						: todo
+				)
+			}
+			return state
+		},
+	)
 
-  // Apply pending edits to todos
-  const displayedTodos = optimisticTodos
-    .map((todo) => {
-      const current = { ...todo }
+	// Apply pending edits to todos
+	const displayedTodos = optimisticTodos
+		.map((todo) => {
+			const current = { ...todo }
 
-      for (const edit of pendingEdits) {
-        if (!edit.ids.has(todo.id)) continue
+			for (const edit of pendingEdits) {
+				if (!edit.ids.has(todo.id)) continue
 
-        switch (edit.type) {
-          case "delete":
-            return null
-          case "reschedule":
-            current.dueDate = edit.dueDate
-            break
-          case "moveToProject":
-            current.projectId = edit.projectId
-            break
-          case "toggleCompleted":
-            current.completed = edit.completed
-            break
-        }
-      }
+				switch (edit.type) {
+					case "delete":
+						return null
+					case "reschedule":
+						current.dueDate = edit.dueDate
+						break
+					case "toggleCompleted":
+						current.completed = edit.completed
+						break
+				}
+			}
 
-      return current
-    })
-    .filter((todo): todo is Todo => todo !== null)
+			return current
+		})
+		.filter(Boolean) as Todo[]
 
-  // Delete multiple todos
-  function deleteSelectedTodos() {
-    const idsToDelete = Array.from(selectedTodoIds)
+	// Filter todos based on search query
+	const filteredTodos = displayedTodos.filter((todo) =>
+		todo.title.toLowerCase().includes(searchQuery.toLowerCase()),
+	)
 
-    setPendingEdits((prev) => [...prev, { type: "delete", ids: new Set(idsToDelete) }])
-    setSelectedTodoIds(new Set())
+	const selectedTodos = displayedTodos.filter((todo) => selectedTodoIds.has(todo.id))
+	const allSelected = displayedTodos.length > 0 && selectedTodoIds.size === displayedTodos.length
 
-    // Send the actual request
-    bulkDeleteTodos(idsToDelete)
-  }
+	// Delete multiple todos
+	function deleteSelectedTodos() {
+		const idsToDelete = Array.from(selectedTodoIds)
 
-  // Reschedule multiple todos
-  function rescheduleSelectedTodos(date: Date | undefined) {
-    const idsToReschedule = Array.from(selectedTodoIds)
+		setPendingEdits((prev) => [...prev, { type: "delete", ids: new Set(idsToDelete) }])
+		setSelectedTodoIds(new Set())
 
-    if (idsToReschedule.length === 0) return
+		// Send the actual request
+		bulkDeleteTodos(idsToDelete)
+	}
 
-    setPendingEdits((prev) => [
-      ...prev,
-      {
-        type: "reschedule",
-        ids: new Set(idsToReschedule),
-        dueDate: date || null,
-      },
-    ])
+	// Reschedule multiple todos
+	function rescheduleSelectedTodos(date: Date | undefined) {
+		const idsToReschedule = Array.from(selectedTodoIds)
+		setPendingEdits((prev) => [
+			...prev,
+			{ type: "reschedule", ids: selectedTodoIds, dueDate: date || null },
+		])
+		setSelectedTodoIds(new Set())
+		setIsRescheduleCalendarOpen(false)
 
-    // Close calendar but don't clear selection
-    setIsRescheduleCalendarOpen(false)
+		// Send the actual request (non-blocking)
+		bulkUpdateDueDate(idsToReschedule, date || null)
+	}
 
-    // Send the actual request
-    bulkUpdateDueDate(idsToReschedule, { dueDate: date?.toISOString() || null })
-  }
+	// Mark multiple todos as completed/uncompleted
+	function markSelectedTodosAs(completed: boolean) {
+		const idsToToggle = Array.from(selectedTodoIds)
+		setPendingEdits((prev) => [
+			...prev,
+			{ type: "toggleCompleted", ids: selectedTodoIds, completed },
+		])
+		setSelectedTodoIds(new Set())
 
-  // Move multiple todos to a project
-  function moveSelectedTodosToProject(projectId: number | null) {
-    const idsToMove = Array.from(selectedTodoIds)
+		// Send the actual request (non-blocking)
+		bulkToggleCompleted(idsToToggle, completed)
+	}
 
-    if (idsToMove.length === 0) return
+	// Select or deselect a todo
+	function toggleTodoSelection(id: number, selected: boolean) {
+		setSelectedTodoIds((prev) => {
+			const newSet = new Set(prev)
+			if (selected) {
+				newSet.add(id)
+			} else {
+				newSet.delete(id)
+			}
+			return newSet
+		})
+	}
 
-    setPendingEdits((prev) => [
-      ...prev,
-      {
-        type: "moveToProject",
-        ids: new Set(idsToMove),
-        projectId,
-      },
-    ])
+	// Select or deselect all visible todos
+	function toggleSelectAll(selected: boolean) {
+		if (selected) {
+			// Select all visible todos
+			const newSelection = new Set(selectedTodoIds)
+			displayedTodos.forEach((todo) => {
+				newSelection.add(todo.id)
+			})
+			setSelectedTodoIds(newSelection)
+		} else {
+			// Deselect all
+			setSelectedTodoIds(new Set())
+		}
+	}
 
-    // Send the actual request
-    bulkUpdateProject(idsToMove, { projectId })
-  }
+	// Add a function to handle single todo deletion
+	function handleDeleteTodo(id: number) {
+		startTransition(() => {
+			// Update optimistically
+			updateOptimisticTodos({ type: "delete", id })
 
-  // Mark multiple todos as completed/uncompleted
-  function markSelectedTodosAs(completed: boolean) {
-    const idsToToggle = Array.from(selectedTodoIds)
+			// Remove the todo from selection
+			setSelectedTodoIds((prev) => {
+				const newSet = new Set(prev)
+				newSet.delete(id)
+				return newSet
+			})
 
-    if (idsToToggle.length === 0) return
+			// Send the actual request
+			deleteTodo(id)
+		})
+	}
 
-    setPendingEdits((prev) => [
-      ...prev,
-      {
-        type: "toggleCompleted",
-        ids: new Set(idsToToggle),
-        completed,
-      },
-    ])
+	return (
+		<div className="space-y-6">
+			{/* Productivity Metrics */}
+			<div className="grid grid-cols-5 gap-4">
+				<div className="bg-white dark:bg-gray-800 p-4 rounded-lg border shadow-sm col-span-2">
+					<div className="flex items-center justify-between mb-1">
+						<h3 className="text-sm font-medium text-muted-foreground">Active Deadlines</h3>
+					</div>
+					<div className="flex items-baseline justify-between mb-2">
+						<p className="text-2xl font-bold">
+							{displayedTodos.length}/{todoLimit}
+						</p>
+						<p className="text-sm text-muted-foreground">
+							{displayedTodos.length >= todoLimit ? (
+								<span className="text-red-500 dark:text-red-400">Upgrade to add more</span>
+							) : (
+								<span>{todoLimit - displayedTodos.length} remaining</span>
+							)}
+						</p>
+					</div>
+					<Progress
+						value={(displayedTodos.length / todoLimit) * 100}
+						className={displayedTodos.length >= todoLimit ? "bg-red-200 dark:bg-red-900" : ""}
+					/>
+				</div>
+			</div>
 
-    // Send the actual request
-    bulkToggleCompleted(idsToToggle, { completed })
-  }
+			{/* Search, Filter, and Add */}
+			<div className="flex flex-wrap gap-4 items-center">
+				<div className="relative flex-1 min-w-[200px]">
+					<Search className="-mt-[0.125rem] absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+					<Input
+						type="text"
+						placeholder="Search todos..."
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+						className="pl-8 h-8"
+					/>
+				</div>
 
-  // Select or deselect a todo
-  function toggleTodoSelection(id: number, selected: boolean) {
-    setSelectedTodoIds((prev) => {
-      const newSet = new Set(prev)
-      if (selected) {
-        newSet.add(id)
-      } else {
-        newSet.delete(id)
-      }
-      return newSet
-    })
-  }
+				<Dialog modal open={isAddTodoOpen} onOpenChange={setIsAddTodoOpen}>
+					<DialogTrigger asChild>
+						{displayedTodos.length >= todoLimit ? (
+							<Button
+								size="sm"
+								variant="outline"
+								className="text-red-500 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950 gap-2"
+							>
+								<Zap className="h-4 w-4" />
+								Upgrade to Pro to add more
+							</Button>
+						) : (
+							<Button size="sm">New deadline</Button>
+						)}
+					</DialogTrigger>
+					<DialogContent>
+						{displayedTodos.length >= todoLimit ? (
+							<>
+								<DialogHeader>
+									<DialogTitle>Todo Limit Reached</DialogTitle>
+									<DialogDescription>
+										You&apos;ve reached your limit of {todoLimit} active todos. Delete some todos or
+										upgrade to Pro for a higher limit.
+									</DialogDescription>
+								</DialogHeader>
+								<div className="py-6">
+									<div className="rounded-lg border p-4">
+										<div className="flex items-center gap-3">
+											<div className="bg-primary/10 p-2 rounded-full">
+												<Zap className="h-5 w-5 text-primary" />
+											</div>
+											<div>
+												<h3 className="font-semibold">Pro Plan Benefits</h3>
+												<p className="text-sm text-muted-foreground">
+													Higher todo limits and advanced features
+												</p>
+											</div>
+										</div>
+										<ul className="grid gap-2 mt-4 text-sm">
+											<li className="flex items-center gap-2">
+												<Zap className="h-4 w-4 text-primary" />
+												<span>Up to {1000} active todos</span>
+											</li>
+											<li className="flex items-center gap-2">
+												<CalendarIcon className="h-4 w-4 text-primary" />
+												<span>Full date range for planning</span>
+											</li>
+										</ul>
+									</div>
+								</div>
+								<DialogFooter>
+									<Button
+										onClick={async () => {
+											setIsLoading(true)
+											try {
+												await redirectToCheckout({
+													userId,
+													email,
+													name,
+												})
+											} catch (error) {
+												console.error("Error redirecting to checkout:", error)
+												setIsLoading(false)
+											}
+										}}
+										className="w-full gap-2"
+										disabled={isLoading}
+									>
+										<CreditCard className="h-4 w-4" />
+										{isLoading ? "Redirecting..." : "Upgrade to Pro"}
+									</Button>
+								</DialogFooter>
+							</>
+						) : (
+							<>
+								<DialogHeader>
+									<DialogTitle>Add New Todo</DialogTitle>
+								</DialogHeader>
+								<AddTodoForm
+									onAddTodo={(todo) =>
+										startTransition(() => {
+											updateOptimisticTodos({ type: "add", todo })
+										})
+									}
+									onClose={() => setIsAddTodoOpen(false)}
+								/>
+							</>
+						)}
+					</DialogContent>
+				</Dialog>
+			</div>
 
-  // Select or deselect all visible todos
-  function toggleSelectAll(selected: boolean) {
-    if (selected) {
-      // Select all visible todos
-      const newSelection = new Set(selectedTodoIds)
-      displayedTodos.forEach((todo) => {
-        newSelection.add(todo.id)
-      })
-      setSelectedTodoIds(newSelection)
-    } else {
-      // Deselect all
-      setSelectedTodoIds(new Set())
-    }
-  }
+			{/* Todo list */}
+			<div className="border rounded-sm overflow-hidden">
+				{/* Card Header with Bulk Actions */}
+				<div className="flex items-center justify-between px-2 py-1 bg-muted/50 border-b">
+					{selectedTodoIds.size > 0 ? (
+						<>
+							{/* Selection Mode Header */}
+							<div className="flex items-center gap-2 h-8">
+								<Checkbox
+									id="select-all"
+									checked={allSelected && displayedTodos.length > 0}
+									onCheckedChange={toggleSelectAll}
+									className="data-[state=checked]:bg-blue-600 data-[state=checked]:text-white data-[state=checked]:border-blue-600"
+								/>
+								<label htmlFor="select-all" className="text-sm font-medium">
+									{selectedTodoIds.size} selected
+								</label>
+							</div>
+							<div className="flex items-center gap-2">
+								{!selectedTodos.every((todo) => todo.completed) ? (
+									<Button
+										variant="outline"
+										size="sm"
+										className="flex items-center gap-1"
+										onClick={() => markSelectedTodosAs(true)}
+									>
+										Done
+									</Button>
+								) : (
+									<Button
+										variant="outline"
+										size="sm"
+										className="flex items-center gap-1"
+										onClick={() => markSelectedTodosAs(false)}
+									>
+										Not done
+									</Button>
+								)}
 
-  // Handle adding a new project
-  function handleProjectAdded(project: Project) {
-    setOptimisticProjects((prev) => [...prev, project])
-  }
+								<Popover open={isRescheduleCalendarOpen} onOpenChange={setIsRescheduleCalendarOpen}>
+									<PopoverTrigger asChild>
+										<Button variant="outline" size="sm" className="flex items-center gap-1">
+											<Clock className="h-4 w-4 mr-1" />
+											Reschedule
+										</Button>
+									</PopoverTrigger>
+									<PopoverContent className="w-auto p-0" align="end">
+										<div className="p-2 border-b">
+											<h3 className="text-sm font-medium">
+												Reschedule {selectedTodoIds.size} item
+												{selectedTodoIds.size !== 1 ? "s" : ""}
+											</h3>
+										</div>
+										<Calendar
+											mode="single"
+											selected={rescheduleDate}
+											onSelect={(date) => {
+												setRescheduleDate(date)
+											}}
+											initialFocus
+										/>
+										<div className="p-2 border-t flex justify-between">
+											<Button
+												variant="ghost"
+												size="sm"
+												onClick={() => {
+													rescheduleSelectedTodos(undefined)
+												}}
+											>
+												Clear Date
+											</Button>
+											<div className="flex gap-2">
+												<Button
+													variant="ghost"
+													size="sm"
+													onClick={() => setIsRescheduleCalendarOpen(false)}
+												>
+													Cancel
+												</Button>
+												<Button
+													variant="default"
+													size="sm"
+													onClick={() => {
+														if (rescheduleDate) {
+															rescheduleSelectedTodos(rescheduleDate)
+														}
+													}}
+												>
+													Apply
+												</Button>
+											</div>
+										</div>
+									</PopoverContent>
+								</Popover>
+								<Button variant="ghost" size="sm" onClick={deleteSelectedTodos}>
+									<Trash className="h-4 w-4" />
+								</Button>
+							</div>
+						</>
+					) : (
+						<>
+							{/* Normal Mode Header */}
+							<div className="flex items-center gap-2 h-8">
+								<Checkbox
+									id="select-all"
+									checked={allSelected && displayedTodos.length > 0}
+									onCheckedChange={toggleSelectAll}
+									className="data-[state=checked]:bg-blue-600 data-[state=checked]:text-white data-[state=checked]:border-blue-600"
+								/>
+								<label htmlFor="select-all" className="text-sm font-medium">
+									Select All
+								</label>
+							</div>
+							<div className="text-sm text-muted-foreground">
+								{filteredTodos.length} item
+								{filteredTodos.length !== 1 ? "s " : " "}
+								{filteredTodos.length !== displayedTodos.length && (
+									<span>matching {searchQuery}</span>
+								)}
+							</div>
+						</>
+					)}
+				</div>
 
-  // Check if all visible todos are selected
-  const allSelected = displayedTodos.length > 0 && displayedTodos.every((todo) => selectedTodoIds.has(todo.id))
+				{/* Todo Groups */}
+				{displayedTodos.length === 0 && !searchQuery ? (
+					<div className="text-center py-8">
+						<p className="text-muted-foreground mb-4">No todos yet.</p>
+						<form action={createSampleTodos}>
+							<Button type="submit" variant="outline">
+								Create sample todos
+							</Button>
+						</form>
+					</div>
+				) : filteredTodos.length === 0 ? (
+					<p className="text-center text-muted-foreground py-4">No todos match your search</p>
+				) : (
+					<div className="grid grid-cols-[1fr_auto_auto_auto]">
+						{groupTodosByDueDate(filteredTodos).map((group) => (
+							<div key={group.label} className="col-span-4 grid grid-cols-subgrid">
+								{/* Date Header */}
+								<div className={`col-span-4 px-2 py-2 border-t bg-muted/30}`}>
+									<div className="flex items-center justify-between">
+										<div className="flex items-center gap-2">
+											{group.isPast ? (
+												<AlertCircle className="h-4 w-4 text-red-500" />
+											) : (
+												<CalendarIcon className="h-4 w-4 text-muted-foreground" />
+											)}
+											<h3
+												className={`text-sm font-medium ${group.isPast ? "text-red-600 dark:text-red-400" : ""}`}
+											>
+												{group.label}
+											</h3>
+										</div>
+										<span className="text-xs text-muted-foreground">
+											{group.todos.length} item
+											{group.todos.length !== 1 ? "s" : ""}
+										</span>
+									</div>
+								</div>
 
-  const selectedTodos = displayedTodos.filter((todo) => selectedTodoIds.has(todo.id))
+								{/* Todos in this group or empty state */}
+								{group.todos.length > 0 ? (
+									<div className="contents">
+										{group.todos.map((todo) => (
+											<div
+												key={todo.id}
+												className={`grid grid-cols-subgrid col-span-4 px-2 py-1.5 gap-4 ${
+													todo.completed ? "bg-muted/30" : ""
+												} hover:bg-muted/20 relative group`}
+											>
+												<div className="flex items-center gap-2">
+													<div className="flex items-center h-5 pt-0.5">
+														<Checkbox
+															checked={selectedTodoIds.has(todo.id)}
+															onCheckedChange={(checked: boolean) => {
+																toggleTodoSelection(todo.id, checked)
+															}}
+															className="data-[state=checked]:bg-blue-600 data-[state=checked]:text-white data-[state=checked]:border-blue-600"
+															aria-label="Select todo for bulk actions"
+														/>
+													</div>
 
-  // Filter todos based on search query and project filter
-  const filteredTodos = displayedTodos.filter((todo) => {
-    return todo.text.toLowerCase().includes(searchQuery.toLowerCase())
-  })
+													<div className="min-w-0">
+														<span
+															className={`text-sm block truncate ${
+																todo.completed ? "line-through text-muted-foreground" : ""
+															} `}
+														>
+															{todo.title}
+														</span>
+													</div>
+												</div>
 
-  // Add a function to handle single todo deletion
-  function handleDeleteTodo(id: number) {
-    setTodos((prev) => prev.filter((todo) => todo.id !== id))
-    deleteTodo(id)
-  }
-
-  // Calculate metrics based on displayed todos
-  const totalTodos = displayedTodos.length
-  const isCurrentlyAtCapacity = totalTodos >= todoLimit
-
-  const handleAddTodo = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    setError(null)
-
-    const formData = new FormData()
-    formData.append("text", newTodoText)
-    if (selectedProjectId) {
-      formData.append("projectId", selectedProjectId.toString())
-    }
-    if (dueDate) {
-      formData.append("dueDate", dueDate)
-    }
-
-    const result = await addTodo(formData)
-    setIsSubmitting(false)
-
-    if (result.error) {
-      setError(result.error)
-      return
-    }
-
-    // Optimistically update the UI
-    const newTodo: Todo = {
-      id: Math.max(0, ...todos.map((t) => t.id)) + 1,
-      text: newTodoText,
-      completed: false,
-      dueDate: dueDate ? new Date(dueDate) : null,
-      projectId: selectedProjectId,
-      userId: null,
-      ownerId: null,
-    }
-
-    setTodos([...todos, newTodo])
-    setNewTodoText("")
-    setSelectedProjectId(null)
-    setDueDate("")
-  }
-
-  const handleToggleCompleted = async (id: number, completed: boolean) => {
-    await toggleCompleted(id, !completed)
-
-    // Optimistically update the UI
-    setTodos((prev) => prev.map((todo) => (todo.id === id ? { ...todo, completed: !completed } : todo)))
-  }
-
-  const handleUpdateDueDate = async (id: number, newDate: string) => {
-    await updateDueDateAction(id, newDate)
-
-    // Optimistically update the UI
-    setTodos((prev) =>
-      prev.map((todo) => (todo.id === id ? { ...todo, dueDate: newDate ? new Date(newDate) : null } : todo)),
-    )
-  }
-
-  const getProjectById = (id: number | null) => {
-    if (!id) return null
-    return projects.find((p) => p.id === id) || null
-  }
-
-  return (
-    <div className="container mx-auto py-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>My Tasks</CardTitle>
-          <CardDescription>
-            Manage your tasks and deadlines ({totalTodos}/{todoLimit})
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleAddTodo} className="flex items-end gap-2 mb-6">
-            <div className="flex-1">
-              <Input
-                placeholder="Add a new task..."
-                value={newTodoText}
-                onChange={(e) => setNewTodoText(e.target.value)}
-                required
-                disabled={isSubmitting || totalTodos >= todoLimit}
-              />
-            </div>
-            <div>
-              <ProjectSelector
-                projects={projects}
-                selectedProjectId={selectedProjectId}
-                onSelect={setSelectedProjectId}
-              />
-            </div>
-            <div>
-              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-40" />
-            </div>
-            <Button type="submit" disabled={isSubmitting || totalTodos >= todoLimit}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add
-            </Button>
-          </form>
-
-          {error && <div className="bg-destructive/15 text-destructive p-3 rounded-md mb-4">{error}</div>}
-
-          <div className="space-y-2">
-            {totalTodos === 0 ? (
-              <div className="text-center py-6 text-muted-foreground">No tasks yet. Add your first task above.</div>
-            ) : (
-              displayedTodos.map((todo) => (
-                <div
-                  key={todo.id}
-                  className={cn(
-                    "flex items-center justify-between p-3 rounded-lg border",
-                    todo.completed && "bg-muted/50",
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => handleToggleCompleted(todo.id, !!todo.completed)}
-                      className="text-primary hover:text-primary/80"
-                    >
-                      {todo.completed ? <Plus className="h-5 w-5" /> : <X className="h-5 w-5" />}
-                    </button>
-                    <span className={cn(todo.completed && "line-through text-muted-foreground")}>{todo.text}</span>
-                    {todo.projectId && <ProjectBadge project={getProjectById(todo.projectId)} />}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {todo.dueDate && (
-                      <Badge variant="outline" className="flex items-center gap-1">
-                        <CalendarIcon className="h-3 w-3" />
-                        <span>{format(new Date(todo.dueDate), "MMM d")}</span>
-                      </Badge>
-                    )}
-                    <button
-                      onClick={() => handleDeleteTodo(todo.id)}
-                      className="text-destructive hover:text-destructive/80"
-                    >
-                      <Trash className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          <div className="text-sm text-muted-foreground">
-            {filteredTodos.filter((t) => t.completed).length} of {totalTodos} tasks completed
-          </div>
-        </CardFooter>
-      </Card>
-    </div>
-  )
+												<div className="flex items-center gap-2 justify-end -mr-2">
+													{!todo.completed && (
+														<Button
+															variant="ghost"
+															size="sm"
+															className="h-6 px-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+															onClick={() => {
+																startTransition(() => {
+																	// First update optimistically
+																	updateOptimisticTodos({
+																		type: "toggleCompleted",
+																		id: todo.id,
+																		completed: true,
+																	})
+																	// Then send the actual request
+																	const formData = new FormData()
+																	formData.append("id", todo.id.toString())
+																	formData.append("completed", "true")
+																	bulkToggleCompleted([todo.id], true)
+																})
+															}}
+														>
+															Done
+														</Button>
+													)}
+													<DropdownMenu>
+														<DropdownMenuTrigger asChild>
+															<Button
+																variant="ghost"
+																size="icon"
+																className="h-6 w-6 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+																aria-label="More options"
+															>
+																<MoreVertical className="h-3.5 w-3.5" />
+															</Button>
+														</DropdownMenuTrigger>
+														<DropdownMenuContent align="end">
+															<DropdownMenuItem asChild>
+																<TodoDueDateButton
+																	todo={todo}
+																	onSelect={(date) => {
+																		startTransition(() => {
+																			// First update optimistically
+																			updateOptimisticTodos({ 
+																				type: "updateDueDate", 
+																				id: todo.id, 
+																				dueDate: date || null 
+																			})
+																			// Then send the actual request
+																			const formData = new FormData()
+																			formData.append("id", todo.id.toString())
+																			formData.append("dueDate", date?.toISOString() || "")
+																			updateDueDate(formData)
+																		})
+																	}}
+																/>
+															</DropdownMenuItem>
+															<DropdownMenuItem onClick={() => handleDeleteTodo(todo.id)}>
+																<Trash className="h-3.5 w-3.5 mr-2" />
+																Delete
+															</DropdownMenuItem>
+														</DropdownMenuContent>
+													</DropdownMenu>
+												</div>
+											</div>
+										))}
+									</div>
+								) : (
+									<div className="py-2 px-2 text-sm text-muted-foreground italic">
+										{group.label === "Today"
+											? "Nothing due today"
+											: `No items due ${group.label.toLowerCase()}`}
+									</div>
+								)}
+							</div>
+						))}
+					</div>
+				)}
+			</div>
+		</div>
+	)
 }
 
 // Helper component for the Todo's due date button and popover
 function TodoDueDateButton({
-  todo,
-  onSelect,
+	todo,
+	onSelect,
 }: {
-  todo: Todo
-  onSelect: (date: Date | null) => void
+	todo: Todo
+	onSelect: (date: Date | null) => void
 }) {
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false)
+	const [isCalendarOpen, setIsCalendarOpen] = useState(false)
 
-  return (
-    <Popover modal open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-      <PopoverTrigger asChild>
-        <Button type="button" variant="outline" size="xs">
-          <CalendarIcon className="h-4 w-4 mr-2" />
-          {todo.dueDate ? (
-            <span>
-              Due{" "}
-              {new Date(todo.dueDate).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              })}
-            </span>
-          ) : (
-            <span>Set due date</span>
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="end">
-        <div className="p-2 border-b">
-          <h3 className="text-sm font-medium">Set Due Date</h3>
-        </div>
-        <div className="p-0">
-          <Calendar
-            mode="single"
-            selected={todo.dueDate ? new Date(todo.dueDate) : undefined}
-            onSelect={(date: Date | undefined) => {
-              onSelect(date || null)
-              setIsCalendarOpen(false)
-            }}
-            initialFocus
-          />
-        </div>
-        <div className="p-2 border-t">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full"
-            onClick={() => {
-              onSelect(null)
-            }}
-          >
-            Clear due date
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
-  )
+	return (
+		<Popover modal open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+			<PopoverTrigger asChild>
+				<DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+					<CalendarIcon className="h-3.5 w-3.5 mr-2" />
+					{todo.dueDate ? (
+						<span>
+							Due{" "}
+							{new Date(todo.dueDate).toLocaleDateString("en-US", {
+								month: "short",
+								day: "numeric",
+							})}
+						</span>
+					) : (
+						<span>Set due date</span>
+					)}
+				</DropdownMenuItem>
+			</PopoverTrigger>
+			<PopoverContent className="w-auto p-0" align="end">
+				<div className="p-2 border-b">
+					<h3 className="text-sm font-medium">Set Due Date</h3>
+				</div>
+				<div className="p-0">
+					<Calendar
+						mode="single"
+						selected={todo.dueDate ? new Date(todo.dueDate) : undefined}
+						onSelect={(date: Date | undefined) => {
+							onSelect(date || null)
+							setIsCalendarOpen(false)
+						}}
+						initialFocus
+					/>
+				</div>
+				<div className="p-2 border-t">
+					<Button
+						variant="ghost"
+						size="sm"
+						className="w-full"
+						onClick={() => {
+							onSelect(null)
+						}}
+					>
+						Clear due date
+					</Button>
+				</div>
+			</PopoverContent>
+		</Popover>
+	)
 }
