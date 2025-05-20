@@ -1,5 +1,5 @@
 "use client"
-import { useOptimistic, useTransition, useState } from "react"
+import { useOptimistic, useTransition, useState, useCallback, memo, useMemo } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -148,6 +148,91 @@ function AddTodoForm({
 	)
 }
 
+// Memoized TodoItem component
+const TodoItem = memo(function TodoItem({ 
+	todo, 
+	isSelected, 
+	onToggleSelect,
+	onDelete,
+	onToggleCompleted,
+	onUpdateDueDate
+}: { 
+	todo: Todo
+	isSelected: boolean
+	onToggleSelect: (id: number, selected: boolean) => void
+	onDelete: (id: number) => void
+	onToggleCompleted: (id: number, completed: boolean) => void
+	onUpdateDueDate: (id: number, date: Date | null) => void
+}) {
+	return (
+		<div
+			className={`grid grid-cols-subgrid col-span-4 px-2 py-1.5 gap-4 ${
+				todo.completed ? "bg-muted/30" : ""
+			} hover:bg-muted/20 relative group`}
+		>
+			<div className="flex items-center gap-2">
+				<div className="flex items-center h-5 pt-0.5">
+					<Checkbox
+						checked={isSelected}
+						onCheckedChange={(checked: boolean) => onToggleSelect(todo.id, checked)}
+						className={`data-[state=checked]:bg-blue-600 data-[state=checked]:text-white data-[state=checked]:border-blue-600 ${
+							isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+						} transition-opacity`}
+						aria-label="Select todo for bulk actions"
+					/>
+				</div>
+
+				<div className="min-w-0">
+					<span
+						className={`text-sm block truncate ${
+							todo.completed ? "line-through text-muted-foreground" : ""
+						} `}
+					>
+						{todo.title}
+					</span>
+				</div>
+			</div>
+
+			<div className="flex items-center gap-2 justify-end -mr-2">
+				{!todo.completed && (
+					<Button
+						variant="ghost"
+						size="sm"
+						className="h-6 px-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+						onClick={() => onToggleCompleted(todo.id, true)}
+					>
+						Done
+					</Button>
+				)}
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="h-6 w-6 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+							aria-label="More options"
+						>
+							<MoreVertical className="h-3.5 w-3.5" />
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end">
+						<DropdownMenuItem asChild>
+							<TodoDueDateButton
+								todo={todo}
+								onSelect={(date) => onUpdateDueDate(todo.id, date)}
+							/>
+						</DropdownMenuItem>
+						<DropdownMenuItem onClick={() => onDelete(todo.id)}>
+							<Trash className="h-3.5 w-3.5 mr-2" />
+							Delete
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
+			</div>
+		</div>
+	)
+})
+
 export function TodosPageClient({
 	todos,
 	todoLimit,
@@ -207,37 +292,101 @@ export function TodosPageClient({
 		},
 	)
 
-	// Apply pending edits to todos
-	const displayedTodos = optimisticTodos
-		.map((todo) => {
-			const current = { ...todo }
+	// Memoize the displayed todos to prevent unnecessary recalculations
+	const displayedTodos = useMemo(() => {
+		return optimisticTodos
+			.map((todo) => {
+				const current = { ...todo }
 
-			for (const edit of pendingEdits) {
-				if (!edit.ids.has(todo.id)) continue
+				for (const edit of pendingEdits) {
+					if (!edit.ids.has(todo.id)) continue
 
-				switch (edit.type) {
-					case "delete":
-						return null
-					case "reschedule":
-						current.dueDate = edit.dueDate
-						break
-					case "toggleCompleted":
-						current.completed = edit.completed
-						break
+					switch (edit.type) {
+						case "delete":
+							return null
+						case "reschedule":
+							current.dueDate = edit.dueDate
+							break
+						case "toggleCompleted":
+							current.completed = edit.completed
+							break
+					}
 				}
-			}
 
-			return current
-		})
-		.filter(Boolean) as Todo[]
+				return current
+			})
+			.filter(Boolean) as Todo[]
+	}, [optimisticTodos, pendingEdits])
 
-	// Filter todos based on search query
-	const filteredTodos = displayedTodos.filter((todo) =>
-		todo.title.toLowerCase().includes(searchQuery.toLowerCase()),
+	// Memoize the filtered todos
+	const filteredTodos = useMemo(() => 
+		displayedTodos.filter((todo) =>
+			todo.title.toLowerCase().includes(searchQuery.toLowerCase())
+		),
+		[displayedTodos, searchQuery]
 	)
 
-	const selectedTodos = displayedTodos.filter((todo) => selectedTodoIds.has(todo.id))
-	const allSelected = displayedTodos.length > 0 && selectedTodoIds.size === displayedTodos.length
+	// Memoize the selected todos
+	const selectedTodos = useMemo(() => 
+		displayedTodos.filter((todo) => selectedTodoIds.has(todo.id)),
+		[displayedTodos, selectedTodoIds]
+	)
+
+	// Memoize the handlers
+	const handleToggleSelect = useCallback((id: number, selected: boolean) => {
+		setSelectedTodoIds((prev) => {
+			const newSet = new Set(prev)
+			if (selected) {
+				newSet.add(id)
+			} else {
+				newSet.delete(id)
+			}
+			return newSet
+		})
+	}, [])
+
+	const handleDelete = useCallback((id: number) => {
+		startTransition(() => {
+			updateOptimisticTodos({ type: "delete", id })
+			setSelectedTodoIds((prev) => {
+				const newSet = new Set(prev)
+				newSet.delete(id)
+				return newSet
+			})
+			deleteTodo(id)
+		})
+	}, [])
+
+	const handleToggleCompleted = useCallback((id: number, completed: boolean) => {
+		startTransition(() => {
+			updateOptimisticTodos({
+				type: "toggleCompleted",
+				id,
+				completed,
+			})
+			bulkToggleCompleted([id], completed)
+		})
+	}, [])
+
+	const handleUpdateDueDate = useCallback((id: number, date: Date | null) => {
+		startTransition(() => {
+			updateOptimisticTodos({ 
+				type: "updateDueDate", 
+				id, 
+				dueDate: date 
+			})
+			const formData = new FormData()
+			formData.append("id", id.toString())
+			formData.append("dueDate", date?.toISOString() || "")
+			updateDueDate(formData)
+		})
+	}, [])
+
+	// Memoize the todo groups
+	const todoGroups = useMemo(() => 
+		groupTodosByDueDate(filteredTodos),
+		[filteredTodos]
+	)
 
 	// Delete multiple todos
 	function deleteSelectedTodos() {
@@ -277,50 +426,15 @@ export function TodosPageClient({
 		bulkToggleCompleted(idsToToggle, completed)
 	}
 
-	// Select or deselect a todo
-	function toggleTodoSelection(id: number, selected: boolean) {
-		setSelectedTodoIds((prev) => {
-			const newSet = new Set(prev)
-			if (selected) {
-				newSet.add(id)
-			} else {
-				newSet.delete(id)
-			}
-			return newSet
-		})
-	}
-
 	// Select or deselect all visible todos
 	function toggleSelectAll(selected: boolean) {
 		if (selected) {
-			// Select all visible todos
-			const newSelection = new Set(selectedTodoIds)
-			displayedTodos.forEach((todo) => {
-				newSelection.add(todo.id)
-			})
-			setSelectedTodoIds(newSelection)
+			// Select all visible todos at once
+			setSelectedTodoIds(new Set(displayedTodos.map(todo => todo.id)))
 		} else {
 			// Deselect all
 			setSelectedTodoIds(new Set())
 		}
-	}
-
-	// Add a function to handle single todo deletion
-	function handleDeleteTodo(id: number) {
-		startTransition(() => {
-			// Update optimistically
-			updateOptimisticTodos({ type: "delete", id })
-
-			// Remove the todo from selection
-			setSelectedTodoIds((prev) => {
-				const newSet = new Set(prev)
-				newSet.delete(id)
-				return newSet
-			})
-
-			// Send the actual request
-			deleteTodo(id)
-		})
 	}
 
 	return (
@@ -465,7 +579,7 @@ export function TodosPageClient({
 							<div className="flex items-center gap-2 h-8">
 								<Checkbox
 									id="select-all"
-									checked={allSelected && displayedTodos.length > 0}
+									checked={selectedTodos.length > 0 && displayedTodos.length > 0}
 									onCheckedChange={toggleSelectAll}
 									className="data-[state=checked]:bg-blue-600 data-[state=checked]:text-white data-[state=checked]:border-blue-600"
 								/>
@@ -560,7 +674,7 @@ export function TodosPageClient({
 							<div className="flex items-center gap-2 h-8">
 								<Checkbox
 									id="select-all"
-									checked={allSelected && displayedTodos.length > 0}
+									checked={selectedTodos.length > 0 && displayedTodos.length > 0}
 									onCheckedChange={(checked: boolean) => {
 										toggleSelectAll(checked)
 									}}
@@ -595,7 +709,7 @@ export function TodosPageClient({
 					<p className="text-center text-muted-foreground py-4">No todos match your search</p>
 				) : (
 					<div className="grid grid-cols-[1fr_auto_auto_auto]">
-						{groupTodosByDueDate(filteredTodos).map((group) => (
+						{todoGroups.map((group) => (
 							<div key={group.label} className="col-span-4 grid grid-cols-subgrid">
 								{/* Date Header */}
 								<div className={`col-span-4 px-2 py-2 border-t bg-muted/30}`}>
@@ -641,102 +755,15 @@ export function TodosPageClient({
 								{group.todos.length > 0 ? (
 									<div className="contents">
 										{group.todos.map((todo) => (
-											<div
+											<TodoItem
 												key={todo.id}
-												className={`grid grid-cols-subgrid col-span-4 px-2 py-1.5 gap-4 ${
-													todo.completed ? "bg-muted/30" : ""
-												} hover:bg-muted/20 relative group`}
-											>
-												<div className="flex items-center gap-2">
-													<div className="flex items-center h-5 pt-0.5">
-														<Checkbox
-															checked={selectedTodoIds.has(todo.id)}
-															onCheckedChange={(checked: boolean) => {
-																toggleTodoSelection(todo.id, checked)
-															}}
-															className={`data-[state=checked]:bg-blue-600 data-[state=checked]:text-white data-[state=checked]:border-blue-600 ${
-																selectedTodoIds.size > 0 ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-															} transition-opacity`}
-															aria-label="Select todo for bulk actions"
-														/>
-													</div>
-
-													<div className="min-w-0">
-														<span
-															className={`text-sm block truncate ${
-																todo.completed ? "line-through text-muted-foreground" : ""
-															} `}
-														>
-															{todo.title}
-														</span>
-													</div>
-												</div>
-
-												<div className="flex items-center gap-2 justify-end -mr-2">
-													{!todo.completed && (
-														<Button
-															variant="ghost"
-															size="sm"
-															className="h-6 px-2 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-															onClick={() => {
-																startTransition(() => {
-																	// First update optimistically
-																	updateOptimisticTodos({
-																		type: "toggleCompleted",
-																		id: todo.id,
-																		completed: true,
-																	})
-																	// Then send the actual request
-																	const formData = new FormData()
-																	formData.append("id", todo.id.toString())
-																	formData.append("completed", "true")
-																	bulkToggleCompleted([todo.id], true)
-																})
-															}}
-														>
-															Done
-														</Button>
-													)}
-													<DropdownMenu>
-														<DropdownMenuTrigger asChild>
-															<Button
-																variant="ghost"
-																size="icon"
-																className="h-6 w-6 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"
-																aria-label="More options"
-															>
-																<MoreVertical className="h-3.5 w-3.5" />
-															</Button>
-														</DropdownMenuTrigger>
-														<DropdownMenuContent align="end">
-															<DropdownMenuItem asChild>
-																<TodoDueDateButton
-																	todo={todo}
-																	onSelect={(date) => {
-																		startTransition(() => {
-																			// First update optimistically
-																			updateOptimisticTodos({ 
-																				type: "updateDueDate", 
-																				id: todo.id, 
-																				dueDate: date || null 
-																			})
-																			// Then send the actual request
-																			const formData = new FormData()
-																			formData.append("id", todo.id.toString())
-																			formData.append("dueDate", date?.toISOString() || "")
-																			updateDueDate(formData)
-																		})
-																	}}
-																/>
-															</DropdownMenuItem>
-															<DropdownMenuItem onClick={() => handleDeleteTodo(todo.id)}>
-																<Trash className="h-3.5 w-3.5 mr-2" />
-																Delete
-															</DropdownMenuItem>
-														</DropdownMenuContent>
-													</DropdownMenu>
-												</div>
-											</div>
+												todo={todo}
+												isSelected={selectedTodoIds.has(todo.id)}
+												onToggleSelect={handleToggleSelect}
+												onDelete={handleDelete}
+												onToggleCompleted={handleToggleCompleted}
+												onUpdateDueDate={handleUpdateDueDate}
+											/>
 										))}
 									</div>
 								) : (
