@@ -561,7 +561,9 @@ export function TodosPageClient({
 								<Checkbox
 									id="select-all"
 									checked={allSelected && displayedTodos.length > 0}
-									onCheckedChange={toggleSelectAll}
+									onCheckedChange={(checked: boolean) => {
+										toggleSelectAll(checked)
+									}}
 									className="data-[state=checked]:bg-blue-600 data-[state=checked]:text-white data-[state=checked]:border-blue-600"
 								/>
 								<label htmlFor="select-all" className="text-sm font-medium">
@@ -602,7 +604,25 @@ export function TodosPageClient({
 											{group.isPast ? (
 												<AlertCircle className="h-4 w-4 text-red-500" />
 											) : (
-												<CalendarIcon className="h-4 w-4 text-muted-foreground" />
+												<Button
+													variant="ghost"
+													size="sm"
+													className="h-4 w-4 p-0 hover:bg-muted"
+													onClick={() => {
+														const allSelected = group.todos.every(todo => selectedTodoIds.has(todo.id))
+														const newSelection = new Set(selectedTodoIds)
+														group.todos.forEach(todo => {
+															if (allSelected) {
+																newSelection.delete(todo.id)
+															} else {
+																newSelection.add(todo.id)
+															}
+														})
+														setSelectedTodoIds(newSelection)
+													}}
+												>
+													<CalendarIcon className="h-4 w-4 text-muted-foreground" />
+												</Button>
 											)}
 											<h3
 												className={`text-sm font-medium ${group.isPast ? "text-red-600 dark:text-red-400" : ""}`}
@@ -634,7 +654,9 @@ export function TodosPageClient({
 															onCheckedChange={(checked: boolean) => {
 																toggleTodoSelection(todo.id, checked)
 															}}
-															className="data-[state=checked]:bg-blue-600 data-[state=checked]:text-white data-[state=checked]:border-blue-600"
+															className={`data-[state=checked]:bg-blue-600 data-[state=checked]:text-white data-[state=checked]:border-blue-600 ${
+																selectedTodoIds.size > 0 ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+															} transition-opacity`}
 															aria-label="Select todo for bulk actions"
 														/>
 													</div>
