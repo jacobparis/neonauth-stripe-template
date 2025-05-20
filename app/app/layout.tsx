@@ -10,12 +10,27 @@ export default async function AppLayout({
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Top navigation bar */}
-      <header className="w-full flex gap-x-2 items-center py-1.5 z-10 border-b border-border/40 px-3 h-12">
+      <header className="w-full flex gap-x-4 items-center py-1.5 z-10 border-b border-border/40 px-3 h-12">
         <div className="font-bold text-base tracking-tight">
           <Link href="/app" className="hover:opacity-80 transition-opacity">
-            NEON
+            NEONAUTH+STRIPE TEMPLATE
           </Link>
         </div>
+
+
+        <Link 
+          href="/app/todos" 
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Todos
+        </Link>
+
+        <Link 
+          href="/app/dev-checklist" 
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Dev Checklist
+        </Link>
 
         <div className="grow" />
 
