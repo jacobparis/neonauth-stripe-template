@@ -1,9 +1,22 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { checkAccessToken } from "./stack"
+import { Ratelimit } from "@upstash/ratelimit"
+import { Redis } from "@upstash/redis"
+
+// Initialize Redis client
+const redis = new Redis({
+  url: process.env.KV_REST_API_URL!,
+  token: process.env.KV_REST_API_TOKEN!,
+})
+
+// Create a new ratelimiter that allows 30 requests per 60 seconds
+const ratelimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(30, "60 s"),
+})
 
 function isProtectedRoute(url: string) {
-  // Public routes that don't require authentication
   const publicRoutes = [
     "/sign-in",
     "/sign-up",
@@ -21,7 +34,7 @@ function isProtectedRoute(url: string) {
       return false
     }
   }
-
+  
   // All other routes are protected
   return true
 }
@@ -42,6 +55,12 @@ export async function middleware(request: NextRequest) {
 
       return NextResponse.redirect(new URL(redirectUrl, request.url))
     }
+
+    // Check rate limit for authenticated users
+    const { success } = await ratelimit.limit(userSub)
+    if (!success) {
+      return new NextResponse("Too Many Requests", { status: 429 })
+    }
   }
 
   return NextResponse.next()
@@ -56,7 +75,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public folder
+     * - api routes (handled separately)
      */
-    "/((?!_next/static|_next/image|favicon.ico|public/).*)",
+    "/((?!_next/static|_next/image|favicon.ico|public/|api/).*)",
   ],
 }

@@ -57,6 +57,7 @@
     "@types/pg": "latest",
     "@types/sql.js": "latest",
     "@upstash/qstash": "latest",
+    "@upstash/ratelimit": "^2.0.5",
     "@vercel/kv": "latest",
     "@vercel/postgres": "latest",
     "@xata.io/client": "latest",
