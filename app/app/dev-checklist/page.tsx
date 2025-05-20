@@ -318,6 +318,13 @@ export default function DevChecklistPage() {
                   state.
                 </li>
               </ul>
+              <br />
+              After setting up Stripe, create a product and subscription price
+              in your Stripe dashboard. Then update the price ID in{' '}
+              <code className="bg-muted p-1 rounded-md">
+                app/api/stripe/plans.ts
+              </code>
+              .
             </CardDescription>
           </CardHeader>
           <CardContent>
