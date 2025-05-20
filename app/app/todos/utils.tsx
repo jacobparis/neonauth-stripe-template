@@ -73,42 +73,33 @@ export function groupTodosByDueDate(
 		}
 	})
 
-	// Add todos with no due date at the end
+	// Add todos with no due date to the Today group
 	const withoutDueDate = sortedTodos.filter((todo) => !todo.dueDate)
 
 	// Always ensure we have a "Today" group
 	const today = startOfDay(new Date())
 	const todayKey = today.toDateString()
 
-	if (!dateMap.has(todayKey)) {
-		// Find the right position to insert the Today group
-		const todayIndex = groups.findIndex((group) => group.date && compareAsc(group.date, today) > 0)
-
-		const todayGroup = {
+	// Find or create the Today group
+	let todayGroup = groups.find((group) => group.date && isSameDay(group.date, today))
+	if (!todayGroup) {
+		todayGroup = {
 			date: today,
 			label: "Today",
-			todos: [] as Todo[],
+			todos: [],
 			isPast: false,
 		}
-
+		// Find the right position to insert the Today group
+		const todayIndex = groups.findIndex((group) => group.date && compareAsc(group.date, today) > 0)
 		if (todayIndex === -1) {
-			// Add at the end (before "No Due Date")
 			groups.push(todayGroup)
 		} else {
-			// Insert at the right position
 			groups.splice(todayIndex, 0, todayGroup)
 		}
 	}
 
-	// Add the "No Due Date" group at the end if there are any
-	if (withoutDueDate.length > 0) {
-		groups.push({
-			date: null,
-			label: "No Due Date",
-			todos: withoutDueDate,
-			isPast: false,
-		})
-	}
+	// Add todos without due date to the Today group
+	todayGroup.todos.push(...withoutDueDate)
 
 	return groups
 }

@@ -326,7 +326,7 @@ export function TodosPageClient({
 	return (
 		<div className="space-y-6">
 			{/* Productivity Metrics */}
-			<div className="grid grid-cols-5 gap-4">
+			<div className="grid grid-cols-5 gap-4 mt-8">
 				<div className="bg-white dark:bg-gray-800 p-4 rounded-lg border shadow-sm col-span-2">
 					<div className="flex items-center justify-between mb-1">
 						<h3 className="text-sm font-medium text-muted-foreground">Active Deadlines</h3>
