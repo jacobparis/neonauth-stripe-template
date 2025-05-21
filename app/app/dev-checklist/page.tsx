@@ -6,8 +6,33 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
+import { db } from '@/lib/db'
+import { sql } from 'drizzle-orm'
 
-export default function DevChecklistPage() {
+async function checkMigrations() {
+  try {
+    // Check if the required tables exist
+    const result = await db.execute(sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'users_sync'
+      ) as users_sync_exists,
+      EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'todos'
+      ) as todos_exists
+    `)
+
+    const tables = result.rows[0]
+    return tables.users_sync_exists && tables.todos_exists
+  } catch (error) {
+    console.error(error)
+    return false
+  }
+}
+
+export default async function DevChecklistPage() {
+  const migrationsRun = await checkMigrations()
   return (
     <div className="container py-8">
       <h1 className="text-2xl font-bold mb-6">Integration Checklist</h1>
@@ -159,6 +184,23 @@ export default function DevChecklistPage() {
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
                     STACK_SECRET_SERVER_KEY
+                  </label>
+                </div>
+              </div>
+
+              <h3 className="text-sm font-medium mt-6">Database Migrations</h3>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox id="migrations" checked={migrationsRun} disabled />
+                  <label
+                    htmlFor="migrations"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Run{' '}
+                    <code className="bg-muted p-1 rounded-md">
+                      npx drizzle-kit push:pg
+                    </code>{' '}
+                    to create tables
                   </label>
                 </div>
               </div>
