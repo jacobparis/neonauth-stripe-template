@@ -8,20 +8,11 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL environment variable is required")
 }
 
-// Parse database URL
-const url = new URL(process.env.DATABASE_URL)
-const ssl = url.searchParams.get("sslmode") === "require"
-
 export default {
-  schema: "./lib/schema.ts",
+  schema: "./lib/db/schema.ts",
   out: "./drizzle",
-  dialect: "postgresql",
+  driver: "pg",
   dbCredentials: {
-    host: url.hostname,
-    port: Number(url.port) || 5432,
-    user: url.username,
-    password: url.password,
-    database: url.pathname.slice(1),
-    ssl: ssl || true,
+    connectionString: process.env.DATABASE_URL,
   },
 } satisfies Config

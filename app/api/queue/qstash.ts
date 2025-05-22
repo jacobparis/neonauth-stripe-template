@@ -1,12 +1,14 @@
 import { Client } from "@upstash/qstash"
 import { processDeleteTodos } from "@/actions/delete-todos"
 import { bulkUpdateDueDate } from "@/actions/update-due-date"
+import { bulkUpdateProject } from "@/actions/update-project"
 import { bulkToggleCompleted } from "@/actions/toggle-completed"
 
 export type QueueTask = 
   | { type: "deleteTodo"; key: `delete-todo-${number}`; id: number }
   | { type: "deleteTodos"; key: `delete-todos-${string}`; ids: number[] }
   | { type: "updateDueDate"; key: `update-due-date-${string}`; ids: number[]; dueDate: string | null }
+  | { type: "updateProject"; key: `update-project-${string}`; ids: number[]; projectId: number | null }
   | { type: "toggleCompleted"; key: `toggle-completed-${string}`; ids: number[]; completed: boolean }
 
 export async function processTask(task: QueueTask) {
@@ -17,6 +19,9 @@ export async function processTask(task: QueueTask) {
         break
       case "updateDueDate":
         await bulkUpdateDueDate(task.ids, task.dueDate ? new Date(task.dueDate) : null)
+        break
+      case "updateProject":
+        await bulkUpdateProject(task.ids, task.projectId)
         break
       case "toggleCompleted":
         await bulkToggleCompleted(task.ids, task.completed)
@@ -38,7 +43,7 @@ const client = new Client({
 })
 
 export async function publishTask<T extends QueueTask>(task: T) {
-  const url = new URL(`${process.env.VERCEL_URL}/api/queue`)
+  const url = new URL(`https://${process.env.VERCEL_URL}/api/queue`)
 
   const job = await client.publishJSON({
     url: url.toString(),

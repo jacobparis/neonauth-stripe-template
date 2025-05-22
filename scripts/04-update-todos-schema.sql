@@ -18,7 +18,7 @@ BEGIN
             completed BOOLEAN NOT NULL DEFAULT false,
             due_date TIMESTAMP,
             project_id INTEGER,
-            assigned_to_id VARCHAR(255),
+            owner_id VARCHAR(255),
             created_at TIMESTAMP NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMP NOT NULL DEFAULT NOW()
         );
