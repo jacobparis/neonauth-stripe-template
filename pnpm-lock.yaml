@@ -197,9 +197,6 @@ importers:
       drizzle-orm:
         specifier: latest
         version: 0.43.1(27c36a8688ed0dd53660f170fc64e28e)
-      drizzle-zod:
-        specifier: latest
-        version: 0.7.1(drizzle-orm@0.43.1(27c36a8688ed0dd53660f170fc64e28e))(zod@3.24.4)
       embla-carousel-react:
         specifier: 8.5.1
         version: 8.5.1(react@19.0.0)
@@ -3727,12 +3724,6 @@ packages:
         optional: true
       sqlite3:
         optional: true
-
-  drizzle-zod@0.7.1:
-    resolution: {integrity: sha512-nZzALOdz44/AL2U005UlmMqaQ1qe5JfanvLujiTHiiT8+vZJTBFhj3pY4Vk+L6UWyKFfNmLhk602Hn4kCTynKQ==}
-    peerDependencies:
-      drizzle-orm: '>=0.36.0'
-      zod: '>=3.0.0'
 
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
@@ -10232,11 +10223,6 @@ snapshots:
       postgres: 3.4.5
       sql.js: 1.13.0
       sqlite3: 5.1.7
-
-  drizzle-zod@0.7.1(drizzle-orm@0.43.1(27c36a8688ed0dd53660f170fc64e28e))(zod@3.24.4):
-    dependencies:
-      drizzle-orm: 0.43.1(27c36a8688ed0dd53660f170fc64e28e)
-      zod: 3.24.4
 
   dunder-proto@1.0.1:
     dependencies:
