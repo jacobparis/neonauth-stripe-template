@@ -72,7 +72,6 @@
     "dotenv": "latest",
     "drizzle-kit": "latest",
     "drizzle-orm": "latest",
-    "drizzle-zod": "latest",
     "embla-carousel-react": "8.5.1",
     "expo-sqlite": "latest",
     "flags": "latest",

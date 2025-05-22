@@ -1,7 +1,5 @@
 import { text, boolean, pgTable, serial, timestamp, integer, pgPolicy, varchar } from "drizzle-orm/pg-core"
 import { relations, sql } from "drizzle-orm"
-import { createInsertSchema, createSelectSchema } from "drizzle-zod"
-import type { z } from "zod"
 
 // Define the neon_auth schema users_sync table
 export const users_sync = pgTable("users_sync", {
@@ -53,10 +51,6 @@ export const todosRelations = relations(todos, ({ one }) => ({
     references: [users_sync.id],
   }),
 }))
-
-// Create schemas for type validation with Zod
-export const insertTodoSchema = createInsertSchema(todos)
-export const selectTodoSchema = createSelectSchema(todos)
 
 // Types for use in the application
 export type Todo = typeof todos.$inferSelect
