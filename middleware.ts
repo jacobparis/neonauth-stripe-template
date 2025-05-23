@@ -42,6 +42,15 @@ function isProtectedRoute(url: string) {
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
+  // Delete this block once you've completed the dev checklist
+  if (!process.env.SKIP_DEV_CHECKLIST) {
+    if (path === '/dev-checklist') {
+      return NextResponse.next()
+    } else {
+      return NextResponse.redirect(new URL('/dev-checklist', request.url))
+    }
+  }
+
   // Skip auth check for public routes
   if (isProtectedRoute(path)) {
     // We only check the access token for validity, we do not hit the StackAuth API
