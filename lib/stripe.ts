@@ -4,14 +4,13 @@
 import { kv } from "@vercel/kv"
 import { z } from "zod"
 import { Stripe } from "stripe"
-import { remember } from "@epic-web/remember"
 
 if (!process.env.STRIPE_SECRET_KEY) {
   throw new Error('process.env.STRIPE_SECRET_KEY not defined')
 }
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: "2025-02-24.acacia",
+  apiVersion: "2025-04-30.basil",
   typescript: true,
 })
 
@@ -131,8 +130,8 @@ export async function syncStripeDataToKV(customerId: string) {
     subscriptionId: subscription.id,
     status: subscription.status,
     priceId: subscription.items.data[0].price.id,
-    currentPeriodStart: subscription.current_period_start,
-    currentPeriodEnd: subscription.current_period_end,
+    currentPeriodStart: subscription.items.data[0].current_period_start,
+    currentPeriodEnd: subscription.items.data[0].current_period_end,
     cancelAtPeriodEnd: subscription.cancel_at_period_end,
     paymentMethod:
       subscription.default_payment_method && typeof subscription.default_payment_method !== "string"
