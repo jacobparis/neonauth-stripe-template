@@ -1,14 +1,10 @@
-import { redirect } from "next/navigation"
-import { stackServerApp } from "@/stack"
+import { redirect } from 'next/navigation'
 
 export default async function HomePage() {
-  // Check if user is logged in
-  const user = await stackServerApp.getUser()
-
-  // If logged in, redirect to app, otherwise to sign-in
-  if (user) {
-    redirect("/app")
+  // Check if dev checklist is completed
+  if (!process.env.SKIP_DEV_CHECKLIST) {
+    redirect('/dev-checklist')
   } else {
-    redirect("/sign-in")
+    redirect('/app')
   }
 }

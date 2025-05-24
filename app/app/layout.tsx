@@ -1,6 +1,8 @@
-import type React from "react"
-import Link from "next/link"
-import { AppUserSettings } from "@/components/app-user-settings"
+import type React from 'react'
+import Link from 'next/link'
+import { AppUserSettings } from '@/components/app-user-settings'
+import { StackProvider, StackTheme } from '@stackframe/stack'
+import { stackServerApp } from '@/stack'
 
 export default async function AppLayout({
   children,
@@ -8,39 +10,44 @@ export default async function AppLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Top navigation bar */}
-      <header className="w-full flex gap-x-4 items-center py-1.5 z-10 border-b border-border/40 px-3 h-12">
-        <div className="font-bold text-base tracking-tight">
-          <Link href="/app" className="hover:opacity-80 transition-opacity">
-            NEONAUTH+STRIPE TEMPLATE
-          </Link>
+    <StackProvider app={stackServerApp}>
+      <StackTheme>
+        <div className="min-h-screen flex flex-col bg-background">
+          {/* Top navigation bar */}
+          <header className="w-full flex gap-x-4 items-center py-1.5 z-10 border-b border-border/40 px-3 h-12">
+            <div className="font-bold text-base tracking-tight">
+              <Link href="/app" className="hover:opacity-80 transition-opacity">
+                NEONAUTH+STRIPE TEMPLATE
+              </Link>
+            </div>
+
+            <Link
+              href="/app/todos"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Todos
+            </Link>
+
+            <Link
+              href="/dev-checklist"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Dev Checklist
+            </Link>
+
+            <div className="grow" />
+
+            <AppUserSettings />
+          </header>
+
+          <div className="flex flex-1 overflow-hidden">
+            {/* Main content */}
+            <main className="flex-1 overflow-y-auto max-w-screen-lg mx-auto w-full">
+              {children}
+            </main>
+          </div>
         </div>
-
-
-        <Link 
-          href="/app/todos" 
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Todos
-        </Link>
-
-        <Link 
-          href="/app/dev-checklist" 
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Dev Checklist
-        </Link>
-
-        <div className="grow" />
-
-        <AppUserSettings />
-      </header>
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* Main content */}
-        <main className="flex-1 overflow-y-auto max-w-screen-lg mx-auto w-full">{children}</main>
-      </div>
-    </div>
+      </StackTheme>
+    </StackProvider>
   )
 }

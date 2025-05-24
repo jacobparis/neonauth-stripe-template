@@ -1,3 +1,12 @@
+-- Create authenticated role if it doesn't exist
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN
+    CREATE ROLE authenticated;
+  END IF;
+END
+$$;
+--> statement-breakpoint
 CREATE TABLE "projects" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(255) NOT NULL,
@@ -37,6 +46,6 @@ CREATE TABLE "users_sync" (
 	"deleted_at" timestamp
 );
 --> statement-breakpoint
-CREATE POLICY "view todos" ON "todos" AS PERMISSIVE FOR SELECT TO "authenticated" USING (auth.user_id() = assigned_to_id);--> statement-breakpoint
-CREATE POLICY "update todos" ON "todos" AS PERMISSIVE FOR UPDATE TO "authenticated" USING (auth.user_id() = assigned_to_id);--> statement-breakpoint
-CREATE POLICY "delete todos" ON "todos" AS PERMISSIVE FOR DELETE TO "authenticated" USING (auth.user_id() = assigned_to_id);
+CREATE POLICY "view todos" ON "todos" AS PERMISSIVE FOR SELECT TO "authenticated" USING (true);--> statement-breakpoint
+CREATE POLICY "update todos" ON "todos" AS PERMISSIVE FOR UPDATE TO "authenticated" USING (true);--> statement-breakpoint
+CREATE POLICY "delete todos" ON "todos" AS PERMISSIVE FOR DELETE TO "authenticated" USING (true);

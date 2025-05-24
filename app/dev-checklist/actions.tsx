@@ -1,6 +1,224 @@
 'use server'
 
 import Stripe from 'stripe'
+import { db } from '@/lib/db'
+import { sql } from 'drizzle-orm'
+import { revalidatePath } from 'next/cache'
+import { neon } from '@neondatabase/serverless'
+import { migrate } from 'drizzle-orm/neon-http/migrator'
+import { drizzle } from 'drizzle-orm/neon-http'
+import * as schema from '@/lib/schema'
+
+export async function checkMigrations() {
+  try {
+    // Check if DATABASE_URL is available first
+    if (!process.env.DATABASE_URL) {
+      console.log('DATABASE_URL not set, skipping migration check')
+      return {
+        tables: {
+          todos: false,
+          user_metrics: false,
+          users_sync: false,
+        },
+        rls: {
+          extension: false,
+          authenticated_grants: false,
+          anonymous_grants: false,
+          default_privileges: false,
+          schema_usage: false,
+        },
+        jwks: false,
+        jwksList: [],
+      }
+    }
+
+    // Check each table individually
+    const tables = ['todos', 'user_metrics', 'users_sync']
+    const results = await Promise.all(
+      tables.map(async (table) => {
+        try {
+          const result = await db.execute(sql`
+            SELECT EXISTS (
+              SELECT 1 FROM information_schema.tables 
+              WHERE table_name = ${table}
+            ) as exists
+          `)
+          return { table, exists: result.rows[0]?.exists || false }
+        } catch (error) {
+          return { table, exists: false }
+        }
+      }),
+    )
+
+    // Check RLS configuration
+    const rlsChecks = await Promise.all([
+      // Check for pg_session_jwt extension
+      db.execute(sql`
+        SELECT EXISTS (
+          SELECT 1 FROM pg_extension WHERE extname = 'pg_session_jwt'
+        ) as extension_exists
+      `),
+      // Check authenticated role grants
+      db.execute(sql`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.role_table_grants 
+          WHERE grantee = 'authenticated' 
+          AND table_schema = 'public'
+          AND privilege_type IN ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
+        ) as authenticated_grants
+      `),
+      // Check anonymous role grants
+      db.execute(sql`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.role_table_grants 
+          WHERE grantee = 'anonymous' 
+          AND table_schema = 'public'
+          AND privilege_type IN ('SELECT', 'INSERT', 'UPDATE', 'DELETE')
+        ) as anonymous_grants
+      `),
+      // Check default privileges
+      db.execute(sql`
+        SELECT (
+          SELECT COUNT(*) = 2 FROM (
+            SELECT defaclrole::regrole::text as role, defaclacl
+            FROM pg_default_acl
+            WHERE defaclnamespace = 'public'::regnamespace
+              AND defaclobjtype = 'r'
+              AND defaclrole::regrole::text IN ('authenticated', 'anonymous')
+          ) as acl
+          WHERE
+            array_to_string(acl.defaclacl, ',') LIKE '%=arwd%' -- grants all four privileges
+        ) as default_privileges
+      `),
+      // Check schema usage grants
+      db.execute(sql`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.role_usage_grants 
+          WHERE grantee IN ('authenticated', 'anonymous')
+          AND object_schema = 'public'
+          AND privilege_type = 'USAGE'
+        ) as schema_usage
+      `),
+    ])
+
+    // Check RLS enabled and policies for each table
+    const rlsTables = ['todos', 'user_metrics', 'users_sync']
+    const rlsTableChecks = await Promise.all(
+      rlsTables.map(async (table) => {
+        // Check if RLS is enabled
+        const rlsResult = await db.execute(sql`
+          SELECT relrowsecurity FROM pg_class WHERE relname = ${table}
+        `)
+        const rlsEnabled = rlsResult.rows[0]?.relrowsecurity === true
+        // Check if at least one policy exists
+        const policyResult = await db.execute(sql`
+          SELECT COUNT(*) as count FROM pg_policies WHERE tablename = ${table}
+        `)
+        const hasPolicy = Number(policyResult.rows[0]?.count) > 0
+        return { table, rlsEnabled, hasPolicy }
+      }),
+    )
+
+    // Check JWKS configuration
+    let jwksConfigured = false
+    let jwksList = []
+    if (process.env.NEON_PROJECT_ID && process.env.NEON_API_KEY) {
+      try {
+        const response = await fetch(
+          `https://console.neon.tech/api/v2/projects/${process.env.NEON_PROJECT_ID}/jwks`,
+          {
+            headers: {
+              Authorization: `Bearer ${process.env.NEON_API_KEY}`,
+            },
+          },
+        )
+        if (response.ok) {
+          const { jwks } = await response.json()
+          console.log('JWKS:', jwks)
+          jwksConfigured = !!jwks
+          jwksList = jwks || []
+        }
+      } catch (error) {
+        console.error('Error checking JWKS:', error)
+      }
+    }
+
+    return {
+      tables: Object.fromEntries(
+        results.map(({ table, exists }) => [table, exists]),
+      ),
+      rls: {
+        extension: rlsChecks[0].rows[0]?.extension_exists || false,
+        authenticated_grants:
+          rlsChecks[1].rows[0]?.authenticated_grants || false,
+        anonymous_grants: rlsChecks[2].rows[0]?.anonymous_grants || false,
+        default_privileges: rlsChecks[3].rows[0]?.default_privileges || false,
+        schema_usage: rlsChecks[4].rows[0]?.schema_usage || false,
+        tables: Object.fromEntries(
+          rlsTableChecks.map(({ table, rlsEnabled, hasPolicy }) => [
+            table,
+            { rlsEnabled, hasPolicy },
+          ]),
+        ),
+      },
+      jwks: jwksConfigured,
+      jwksList,
+    }
+  } catch (error) {
+    return {
+      tables: {
+        todos: false,
+        user_metrics: false,
+        users_sync: false,
+      },
+      rls: {
+        extension: false,
+        authenticated_grants: false,
+        anonymous_grants: false,
+        default_privileges: false,
+        schema_usage: false,
+      },
+      jwks: false,
+      jwksList: [],
+    }
+  }
+}
+
+export async function runMigrations() {
+  try {
+    // Check if DATABASE_URL is available
+    if (!process.env.DATABASE_URL) {
+      return {
+        success: false,
+        error:
+          'DATABASE_URL environment variable is not set. Please configure your database first.',
+      }
+    }
+
+    console.log('Setting up client...')
+
+    // verify the connection is working
+    await db.execute(sql`SELECT 1`)
+
+    // run the migrations
+    console.log('Running migrations...')
+    await migrate(db, {
+      migrationsFolder: 'drizzle',
+      migrationsTable: 'drizzle_migrations',
+    })
+
+    // Revalidate the page to show updated migration status
+    revalidatePath('/dev-checklist')
+
+    return { success: true }
+  } catch (error) {
+    console.error('Error running migrations:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    }
+  }
+}
 
 export async function registerStripeWebhook() {
   try {
@@ -112,5 +330,182 @@ export async function registerStripeWebhook() {
       success: false,
       error: error.message,
     }
+  }
+}
+
+export async function resetDatabase() {
+  try {
+    if (!process.env.DATABASE_URL) {
+      return {
+        success: false,
+        error: 'DATABASE_URL environment variable is not set.',
+      }
+    }
+
+    console.log('Resetting database...')
+    const connection = neon(process.env.DATABASE_URL)
+    const migrationDb = drizzle(connection, { schema })
+
+    // Execute the commands in sequence
+    await migrationDb.execute(sql`DROP SCHEMA IF EXISTS public CASCADE;`)
+    await migrationDb.execute(sql`CREATE SCHEMA public;`)
+    await migrationDb.execute(sql`GRANT ALL ON SCHEMA public TO public;`)
+
+    revalidatePath('/dev-checklist')
+    return { success: true }
+  } catch (error) {
+    console.error('Error resetting database:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function configureRLS() {
+  try {
+    if (!process.env.DATABASE_URL) {
+      return {
+        success: false,
+        error: 'DATABASE_URL environment variable is not set.',
+      }
+    }
+
+    console.log('Configuring RLS...')
+    const connection = neon(process.env.DATABASE_URL)
+    const migrationDb = drizzle(connection, { schema })
+
+    // Create roles if they don't exist
+    await migrationDb.execute(sql`
+      DO $$ 
+      BEGIN
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN
+          CREATE ROLE authenticated;
+        END IF;
+        IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'anonymous') THEN
+          CREATE ROLE anonymous;
+        END IF;
+      END
+      $$;
+    `)
+
+    // Create extension
+    await migrationDb.execute(
+      sql`CREATE EXTENSION IF NOT EXISTS pg_session_jwt;`,
+    )
+
+    // Grant permissions for existing tables
+    await migrationDb.execute(sql`
+      GRANT SELECT, UPDATE, INSERT, DELETE ON ALL TABLES
+      IN SCHEMA public
+      to authenticated;
+    `)
+
+    await migrationDb.execute(sql`
+      GRANT SELECT, UPDATE, INSERT, DELETE ON ALL TABLES
+      IN SCHEMA public
+      to anonymous;
+    `)
+
+    // Set up default privileges
+    await migrationDb.execute(sql`
+      ALTER DEFAULT PRIVILEGES
+      IN SCHEMA public
+      GRANT SELECT, UPDATE, INSERT, DELETE ON TABLES
+      TO authenticated;
+    `)
+
+    await migrationDb.execute(sql`
+      ALTER DEFAULT PRIVILEGES
+      IN SCHEMA public
+      GRANT SELECT, UPDATE, INSERT, DELETE ON TABLES
+      TO anonymous;
+    `)
+
+    // Grant schema usage
+    await migrationDb.execute(
+      sql`GRANT USAGE ON SCHEMA public TO authenticated;`,
+    )
+    await migrationDb.execute(sql`GRANT USAGE ON SCHEMA public TO anonymous;`)
+
+    // Always enable RLS and create a basic policy for each table
+    await migrationDb.execute(sql`ALTER TABLE todos ENABLE ROW LEVEL SECURITY;`)
+    await migrationDb.execute(
+      sql`ALTER TABLE user_metrics ENABLE ROW LEVEL SECURITY;`,
+    )
+    await migrationDb.execute(
+      sql`ALTER TABLE users_sync ENABLE ROW LEVEL SECURITY;`,
+    )
+
+    // Drop existing policies and create a permissive policy for each table
+    await migrationDb.execute(sql`DROP POLICY IF EXISTS todos_select ON todos;`)
+    await migrationDb.execute(
+      sql`CREATE POLICY todos_select ON todos FOR SELECT USING (true);`,
+    )
+    await migrationDb.execute(
+      sql`DROP POLICY IF EXISTS user_metrics_select ON user_metrics;`,
+    )
+    await migrationDb.execute(
+      sql`CREATE POLICY user_metrics_select ON user_metrics FOR SELECT USING (true);`,
+    )
+    await migrationDb.execute(
+      sql`DROP POLICY IF EXISTS users_sync_select ON users_sync;`,
+    )
+    await migrationDb.execute(
+      sql`CREATE POLICY users_sync_select ON users_sync FOR SELECT USING (true);`,
+    )
+
+    revalidatePath('/dev-checklist')
+    return { success: true }
+  } catch (error) {
+    console.error('Error configuring RLS:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+export async function configureJWKS() {
+  try {
+    if (
+      !process.env.DATABASE_URL ||
+      !process.env.NEXT_PUBLIC_STACK_PROJECT_ID
+    ) {
+      return {
+        success: false,
+        error: 'DATABASE_URL and NEXT_PUBLIC_STACK_PROJECT_ID are required.',
+      }
+    }
+
+    // Extract project ID from DATABASE_URL
+    const projectId = process.env.NEON_PROJECT_ID
+
+    const jwksUrl = `https://api.stack-auth.com/api/v1/projects/${process.env.NEXT_PUBLIC_STACK_PROJECT_ID}/.well-known/jwks.json`
+
+    // Add JWKS URL to Neon project
+    const response = await fetch(
+      `https://console.neon.tech/api/v2/projects/${projectId}/jwks`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.NEON_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jwks_url: jwksUrl,
+          provider_name: 'StackAuth',
+          role_names: ['authenticated', 'anonymous'],
+        }),
+      },
+    )
+
+    if (!response.ok) {
+      const error = await response.json()
+      return {
+        success: false,
+        error: error.message || 'Failed to configure JWKS',
+      }
+    }
+
+    revalidatePath('/dev-checklist')
+    return { success: true }
+  } catch (error) {
+    console.error('Error configuring JWKS:', error)
+    return { success: false, error: error.message }
   }
 }
