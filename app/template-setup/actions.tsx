@@ -193,15 +193,14 @@ export async function checkMigrations() {
   }
 }
 
-export async function runMigrations() {
+export async function runMigrations(formData: FormData): Promise<void> {
   try {
     // Check if DATABASE_URL is available
     if (!process.env.DATABASE_URL) {
-      return {
-        success: false,
-        error:
-          'DATABASE_URL environment variable is not set. Please configure your database first.',
-      }
+      console.error(
+        'DATABASE_URL environment variable is not set. Please configure your database first.',
+      )
+      return
     }
 
     console.log('Setting up client...')
@@ -218,14 +217,8 @@ export async function runMigrations() {
 
     // Revalidate the page to show updated migration status
     revalidatePath('/dev-checklist')
-
-    return { success: true }
   } catch (error) {
     console.error('Error running migrations:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
-    }
   }
 }
 
@@ -235,17 +228,13 @@ export async function registerStripeWebhook() {
     const VERCEL_URL = process.env.VERCEL_URL
 
     if (!STRIPE_SECRET_KEY) {
-      return {
-        success: false,
-        error: 'STRIPE_SECRET_KEY is required',
-      }
+      console.error('STRIPE_SECRET_KEY is required')
+      return
     }
 
     if (!VERCEL_URL) {
-      return {
-        success: false,
-        error: 'VERCEL_URL is required',
-      }
+      console.error('VERCEL_URL is required')
+      return
     }
 
     // Initialize Stripe
@@ -273,7 +262,7 @@ export async function registerStripeWebhook() {
       'payment_intent.succeeded',
       'payment_intent.payment_failed',
       'payment_intent.canceled',
-    ]
+    ] as Stripe.WebhookEndpointCreateParams.EnabledEvent[]
 
     // Construct the webhook URL with https:// prefix
     const webhookUrl = VERCEL_URL.startsWith('http')
@@ -290,8 +279,6 @@ export async function registerStripeWebhook() {
       (endpoint) => endpoint.url === webhookUrl,
     )
 
-    let result
-
     if (existingEndpoint) {
       console.log(`ℹ️ Webhook already exists for ${webhookUrl}`)
       console.log(`ℹ️ Webhook ID: ${existingEndpoint.id}`)
@@ -300,22 +287,18 @@ export async function registerStripeWebhook() {
       )
 
       // Update the existing webhook with the current event types
-      result = await stripe.webhookEndpoints.update(existingEndpoint.id, {
+      await stripe.webhookEndpoints.update(existingEndpoint.id, {
         enabled_events: events,
       })
 
       console.log(`✅ Webhook updated successfully!`)
 
-      return {
-        success: true,
-        message: 'Webhook updated successfully!',
-        webhookId: result.id,
-        webhookSecret: 'Existing webhook secret preserved',
-        isUpdate: true,
-      }
+      // Store the webhook ID and secret in the environment variables
+      // Note: We can't get the secret for existing webhooks
+      revalidatePath('/dev-checklist')
     } else {
       // Create a new webhook endpoint
-      result = await stripe.webhookEndpoints.create({
+      const result = await stripe.webhookEndpoints.create({
         url: webhookUrl,
         enabled_events: events,
         description: `Webhook for ${VERCEL_URL}`,
@@ -325,30 +308,22 @@ export async function registerStripeWebhook() {
       console.log(`ℹ️ Webhook ID: ${result.id}`)
       console.log(`ℹ️ Webhook Secret: ${result.secret}`)
 
-      return {
-        success: true,
-        message: 'Webhook registered successfully!',
-        webhookId: result.id,
-        webhookSecret: result.secret,
-        isUpdate: false,
-      }
+      // Store the webhook ID and secret in the environment variables
+      revalidatePath('/dev-checklist')
     }
   } catch (error) {
-    console.error('Error registering webhook:', error)
-    return {
-      success: false,
-      error: error.message,
-    }
+    console.error(
+      'Error registering webhook:',
+      error instanceof Error ? error.message : 'Unknown error occurred',
+    )
   }
 }
 
-export async function resetDatabase() {
+export async function resetDatabase(formData: FormData): Promise<void> {
   try {
     if (!process.env.DATABASE_URL) {
-      return {
-        success: false,
-        error: 'DATABASE_URL environment variable is not set.',
-      }
+      console.error('DATABASE_URL environment variable is not set.')
+      return
     }
 
     console.log('Resetting database...')
@@ -361,20 +336,16 @@ export async function resetDatabase() {
     await migrationDb.execute(sql`GRANT ALL ON SCHEMA public TO public;`)
 
     revalidatePath('/dev-checklist')
-    return { success: true }
   } catch (error) {
     console.error('Error resetting database:', error)
-    return { success: false, error: error.message }
   }
 }
 
-export async function configureRLS() {
+export async function configureRLS(formData: FormData): Promise<void> {
   try {
     if (!process.env.DATABASE_URL) {
-      return {
-        success: false,
-        error: 'DATABASE_URL environment variable is not set.',
-      }
+      console.error('DATABASE_URL environment variable is not set.')
+      return
     }
 
     console.log('Configuring RLS...')
@@ -462,32 +433,28 @@ export async function configureRLS() {
     )
 
     revalidatePath('/dev-checklist')
-    return { success: true }
   } catch (error) {
     console.error('Error configuring RLS:', error)
-    return { success: false, error: error.message }
   }
 }
 
-export async function configureJWKS() {
+export async function configureJWKS(formData: FormData): Promise<void> {
   try {
     if (
       !process.env.DATABASE_URL ||
       !process.env.NEXT_PUBLIC_STACK_PROJECT_ID
     ) {
-      return {
-        success: false,
-        error: 'DATABASE_URL and NEXT_PUBLIC_STACK_PROJECT_ID are required.',
-      }
+      console.error(
+        'DATABASE_URL and NEXT_PUBLIC_STACK_PROJECT_ID are required.',
+      )
+      return
     }
 
     // Get project ID directly from the database instead of environment variable
     const projectIdResult = await getNeonProjectId()
     if (!projectIdResult.success) {
-      return {
-        success: false,
-        error: `Failed to get Neon project ID: ${projectIdResult.error}`,
-      }
+      console.error(`Failed to get Neon project ID: ${projectIdResult.error}`)
+      return
     }
 
     const projectId = projectIdResult.projectId
@@ -513,20 +480,13 @@ export async function configureJWKS() {
 
     if (!response.ok) {
       const error = await response.json()
-      return {
-        success: false,
-        error: error.message || 'Failed to configure JWKS',
-      }
+      console.error(error.message || 'Failed to configure JWKS')
+      return
     }
 
     revalidatePath('/dev-checklist')
-    return { success: true }
   } catch (error) {
     console.error('Error configuring JWKS:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error occurred',
-    }
   }
 }
 
@@ -552,7 +512,13 @@ async function getNeonProjectId() {
       return { success: false, error: 'Could not retrieve Neon project ID' }
     }
   } catch (error) {
-    console.error('Error getting Neon project ID:', error)
-    return { success: false, error: String(error) }
+    console.error(
+      'Error getting Neon project ID:',
+      error instanceof Error ? error.message : 'Unknown error',
+    )
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
   }
 }
