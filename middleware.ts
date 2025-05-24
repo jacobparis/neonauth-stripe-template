@@ -17,6 +17,10 @@ const ratelimit = new Ratelimit({
 })
 
 function isProtectedRoute(url: string) {
+  if (url === "/") {
+    return false // skip check for landing page
+  }
+
   const publicRoutes = [
     "/sign-in",
     "/sign-up",

@@ -75,6 +75,7 @@
     "embla-carousel-react": "8.5.1",
     "expo-sqlite": "latest",
     "flags": "latest",
+    "geist": "^1.4.2",
     "gel": "latest",
     "input-otp": "1.4.1",
     "jose": "latest",

@@ -122,21 +122,30 @@ export async function checkMigrations() {
     // Check JWKS configuration
     let jwksConfigured = false
     let jwksList = []
-    if (process.env.NEON_PROJECT_ID && process.env.NEON_API_KEY) {
+
+    // Get project ID directly from the database instead of environment variable
+    if (process.env.NEON_API_KEY) {
       try {
-        const response = await fetch(
-          `https://console.neon.tech/api/v2/projects/${process.env.NEON_PROJECT_ID}/jwks`,
-          {
-            headers: {
-              Authorization: `Bearer ${process.env.NEON_API_KEY}`,
+        const projectIdResult = await getNeonProjectId()
+        if (projectIdResult.success) {
+          const projectId = projectIdResult.projectId
+
+          const response = await fetch(
+            `https://console.neon.tech/api/v2/projects/${projectId}/jwks`,
+            {
+              headers: {
+                Authorization: `Bearer ${process.env.NEON_API_KEY}`,
+              },
             },
-          },
-        )
-        if (response.ok) {
-          const { jwks } = await response.json()
-          console.log('JWKS:', jwks)
-          jwksConfigured = !!jwks
-          jwksList = jwks || []
+          )
+          if (response.ok) {
+            const { jwks } = await response.json()
+            console.log('JWKS:', jwks)
+            jwksConfigured = !!jwks
+            jwksList = jwks || []
+          }
+        } else {
+          console.error('Failed to get Neon project ID:', projectIdResult.error)
         }
       } catch (error) {
         console.error('Error checking JWKS:', error)
@@ -472,8 +481,16 @@ export async function configureJWKS() {
       }
     }
 
-    // Extract project ID from DATABASE_URL
-    const projectId = process.env.NEON_PROJECT_ID
+    // Get project ID directly from the database instead of environment variable
+    const projectIdResult = await getNeonProjectId()
+    if (!projectIdResult.success) {
+      return {
+        success: false,
+        error: `Failed to get Neon project ID: ${projectIdResult.error}`,
+      }
+    }
+
+    const projectId = projectIdResult.projectId
 
     const jwksUrl = `https://api.stack-auth.com/api/v1/projects/${process.env.NEXT_PUBLIC_STACK_PROJECT_ID}/.well-known/jwks.json`
 
@@ -506,6 +523,36 @@ export async function configureJWKS() {
     return { success: true }
   } catch (error) {
     console.error('Error configuring JWKS:', error)
-    return { success: false, error: error.message }
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    }
+  }
+}
+
+/**
+ * Retrieves the Neon project ID directly from the database connection
+ */
+async function getNeonProjectId() {
+  try {
+    if (!process.env.DATABASE_URL) {
+      return { success: false, error: 'Database URL not configured' }
+    }
+
+    // Use the database client from the project
+    const result = await db.execute(sql`SHOW neon.project_id`)
+
+    console.log('Neon project ID:', result.rows[0]['neon.project_id'])
+    if (result.rows.length > 0 && result.rows[0]['neon.project_id']) {
+      return {
+        success: true,
+        projectId: result.rows[0]['neon.project_id'],
+      }
+    } else {
+      return { success: false, error: 'Could not retrieve Neon project ID' }
+    }
+  } catch (error) {
+    console.error('Error getting Neon project ID:', error)
+    return { success: false, error: String(error) }
   }
 }
