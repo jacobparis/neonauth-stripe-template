@@ -1,23 +1,10 @@
-import { redirect } from "next/navigation"
-import { stackServerApp } from "@/stack"
-import { AccountPageClient } from "./page-client"
-import { verifyContactChannel } from "../profile/actions"
-import { getStripeCustomerId, getStripeCustomer } from "@/lib/stripe"
-import { getStripePlan } from "@/app/api/stripe/plans"
+import { stackServerApp } from '@/stack'
+import { AccountPageClient } from './page-client'
+import { getStripeCustomerId, getStripeCustomer } from '@/lib/stripe'
+import { getStripePlan } from '@/app/api/stripe/plans'
 
-export default async function AccountPage({
-  searchParams,
-}: {
-  searchParams: Record<string, string | string[] | undefined>
-}) {
-  const user = await stackServerApp.getUser({ or: "redirect" })
-  const code = searchParams.code
-
-  if (code && !Array.isArray(code)) {
-    // Handle contact channel verification
-    await verifyContactChannel({ code })
-    redirect("/app/settings/account")
-  }
+export default async function AccountPage() {
+  const user = await stackServerApp.getUser({ or: 'redirect' })
 
   const contactChannels = await user?.listContactChannels()
 
@@ -43,7 +30,7 @@ export default async function AccountPage({
         subscription={subscription}
         plan={plan}
         userId={user.id}
-        email={user.primaryEmail || ""}
+        email={user.primaryEmail || ''}
         name={user.displayName}
       />
     </div>

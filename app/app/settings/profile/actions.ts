@@ -130,8 +130,8 @@ export async function sendVerificationEmail(formData: FormData) {
     const channel = channels.find((c) => c.id === id)
 
     if (channel) {
-      const callbackUrl = `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"}/app/settings/account`
-      await channel.sendVerificationCode({ callbackUrl })
+      // const callbackUrl = `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"}/app/settings/account-verify`
+      await channel.sendVerificationEmail()
     }
 
     void revalidatePath("/app/settings/account")
@@ -145,7 +145,7 @@ export async function sendVerificationEmail(formData: FormData) {
 export async function verifyContactChannel({ code }: { code: string }) {
   try {
     // Use the Stack SDK to verify the contact channel
-    await stackServerApp.verifyContactChannel(code)
+    await stackServerApp.verifyEmail(code)
   } catch (error) {
     // If the verification link has already been used, just continue
     if (error instanceof Error && error.message.includes("already been used")) {

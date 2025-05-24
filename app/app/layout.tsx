@@ -28,13 +28,6 @@ export default async function AppLayout({
               Todos
             </Link>
 
-            <Link
-              href="/dev-checklist"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Dev Checklist
-            </Link>
-
             <div className="grow" />
 
             <AppUserSettings />
