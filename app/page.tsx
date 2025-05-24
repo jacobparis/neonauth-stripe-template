@@ -29,7 +29,7 @@ export default async function Page() {
           </p>
 
           <Button className="mt-4" asChild>
-            <Link href="/dashboard">Open Dashboard</Link>
+            <Link href="/app">Open app</Link>
           </Button>
           <p className="text-sm text-gray-500 mt-2">
             This may not work until the below steps are complete.

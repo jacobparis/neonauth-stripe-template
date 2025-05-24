@@ -12,8 +12,8 @@ export const stackServerApp = new StackServerApp({
   tokenStore: "nextjs-cookie",
   redirectMethod: "nextjs",
   urls: {
-    afterSignIn: "/",
-    afterSignUp: "/",
+    afterSignIn: "/app",
+    afterSignUp: "/app",
     signIn: "/sign-in",
     signUp: "/sign-up",
   },
