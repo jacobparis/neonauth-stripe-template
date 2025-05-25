@@ -10,10 +10,9 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN!,
 })
 
-// Create a new ratelimiter that allows 30 requests per 60 seconds
 const ratelimit = new Ratelimit({
   redis,
-  limiter: Ratelimit.slidingWindow(60, "60 s"),
+  limiter: Ratelimit.slidingWindow(300, "60 s"),
 })
 
 function isProtectedRoute(url: string) {
