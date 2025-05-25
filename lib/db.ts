@@ -1,7 +1,7 @@
 import { drizzle } from "drizzle-orm/neon-http"
 import { neon } from "@neondatabase/serverless"
 import { remember } from "@epic-web/remember"
-import * as schema from "./schema"
+import * as schema from "../drizzle/schema"
 import { eq, isNull, and } from "drizzle-orm"
 
 // Create a lazy Drizzle ORM instance that only connects when needed

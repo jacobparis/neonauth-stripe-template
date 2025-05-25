@@ -1,7 +1,7 @@
 "use server"
 
 import { db } from "@/lib/db"
-import { todos } from "@/lib/schema"
+import { todos } from "@/drizzle/schema"
 import { inArray } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import { publishTask } from "@/app/api/queue/qstash"

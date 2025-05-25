@@ -35,7 +35,7 @@ export default async function AppLayout({
 
           <div className="flex flex-1 overflow-hidden">
             {/* Main content */}
-            <main className="flex-1 overflow-y-auto max-w-screen-lg mx-auto w-full">
+            <main className="flex-1 overflow-y-auto max-w-screen-md mx-auto w-full">
               {children}
             </main>
           </div>

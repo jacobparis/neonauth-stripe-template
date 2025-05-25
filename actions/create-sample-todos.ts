@@ -1,7 +1,7 @@
 "use server"
 
 import { db } from "@/lib/db"
-import { todos } from "@/lib/schema"
+import { todos } from "@/drizzle/schema"
 import { revalidatePath } from "next/cache"
 import { stackServerApp } from "@/stack"
 

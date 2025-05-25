@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache'
 import { neon } from '@neondatabase/serverless'
 import { migrate } from 'drizzle-orm/neon-http/migrator'
 import { drizzle } from 'drizzle-orm/neon-http'
-import * as schema from '@/lib/schema'
+import * as schema from '@/drizzle/schema'
 
 export async function checkMigrations() {
   try {

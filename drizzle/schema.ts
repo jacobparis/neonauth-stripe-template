@@ -24,6 +24,7 @@ export const user_metrics = pgTable("user_metrics", {
 export const todos = pgTable("todos", {
   id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
   completed: boolean("completed").notNull().default(false),
   dueDate: timestamp("due_date"),
   assignedToId: varchar("assigned_to_id", { length: 255 }),

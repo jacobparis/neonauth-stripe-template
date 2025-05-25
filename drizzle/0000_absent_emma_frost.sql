@@ -20,6 +20,7 @@ CREATE TABLE "todos" (
 	"title" varchar(255) NOT NULL,
 	"completed" boolean DEFAULT false NOT NULL,
 	"due_date" timestamp,
+	"description" text,
 	"project_id" integer,
 	"assigned_to_id" varchar(255),
 	"created_at" timestamp DEFAULT now() NOT NULL,

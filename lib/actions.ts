@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { db } from "@/lib/db"
-import { todos, user_metrics, users_sync } from "@/lib/schema"
+import { todos, user_metrics, users_sync } from "@/drizzle/schema"
 import { eq, desc, count, isNull } from "drizzle-orm"
 import { getStripePlan } from "@/app/api/stripe/plans"
 import { stackServerApp, getAccessToken } from "@/stack"
@@ -21,6 +21,32 @@ export async function getTodos() {
   } catch (error) {
     console.error("Failed to fetch todos:", error)
     return []
+  }
+}
+
+export async function getTodo(id: number) {
+  const accessToken = await getAccessToken(await cookies())
+  if (!accessToken) {
+    throw new Error("Not authenticated")
+  }
+
+  if (isNaN(id)) {
+    throw new Error("Invalid todo ID")
+  }
+
+  try {
+    const item = await db.query.todos.findFirst({
+      where: eq(todos.id, id)
+    })
+    
+    if (!item) {
+      throw new Error("Todo not found")
+    }
+    
+    return item
+  } catch (error) {
+    console.error("Failed to fetch todo:", error)
+    throw error
   }
 }
 
@@ -175,5 +201,34 @@ export async function resetUserTodosCreated(userId: string) {
   } catch (error) {
     console.error("Failed to reset user todos created count:", error)
     return { error: "Failed to reset todos created count" }
+  }
+}
+
+export async function updateTodo(formData: FormData) {
+  const id = formData.get('id')
+  const title = formData.get('title')
+  const description = formData.get('description')
+
+  if (!id || typeof id !== 'string') {
+    throw new Error('Invalid todo id')
+  }
+
+  const todoId = parseInt(id)
+
+  try {
+    await db
+      .update(todos)
+      .set({
+        title: title as string,
+        description: description as string,
+        updatedAt: new Date(),
+      })
+      .where(eq(todos.id, todoId))
+
+    revalidatePath('/')
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to update todo:', error)
+    return { error: 'Failed to update todo' }
   }
 }
