@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -13,13 +13,14 @@ import {
 import { format, isValid } from 'date-fns'
 import { deleteTodo } from '@/actions/delete-todos'
 import { updateDueDate } from '@/actions/update-due-date'
-import { bulkToggleCompleted } from '@/actions/toggle-completed'
-import { updateTodo } from '@/lib/actions'
+import { toggleTodoCompleted } from '@/actions/toggle-completed'
+import { updateTodo, toggleWatchTodo } from '@/lib/actions'
 import { useRouter } from 'next/navigation'
-import { CalendarIcon, ArrowLeft, Trash2 } from 'lucide-react'
+import { CalendarIcon, ArrowLeft, Trash2, Eye, EyeOff } from 'lucide-react'
 import type { Todo } from '@/drizzle/schema'
 import Link from 'next/link'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { getTaskWatchers } from '@/app/api/notifications/notifications'
 
 export function TodoItemPageClient({
   todo,
@@ -52,7 +53,10 @@ export function TodoItemPageClient({
 
   const handleToggleCompleted = () => {
     startTransition(async () => {
-      await bulkToggleCompleted([todo.id], !todo.completed)
+      const formData = new FormData()
+      formData.append('id', todo.id.toString())
+      formData.append('completed', (!todo.completed).toString())
+      await toggleTodoCompleted(formData)
       router.refresh()
     })
   }
@@ -178,9 +182,12 @@ export function TodoItemPageClient({
 
         {/* Activity Section */}
         <div className="mt-16">
-          <h3 className="text-sm font-semibold text-gray-900 tracking-wide uppercase">
-            Activity
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-gray-900 tracking-wide uppercase">
+              Activity
+            </h3>
+            <WatchButton todoId={todo.id} userId={userId} />
+          </div>
           <div className="space-y-4 mt-6">
             <div className="flex gap-3 group">
               <div className="flex flex-col items-center">
@@ -244,5 +251,54 @@ export function TodoItemPageClient({
         </div>
       </div>
     </div>
+  )
+}
+
+function WatchButton({ todoId, userId }: { todoId: number; userId: string }) {
+  const [isWatching, setIsWatching] = useState(false)
+  const [isPending, startTransition] = useTransition()
+  const router = useRouter()
+
+  useEffect(() => {
+    getTaskWatchers({ taskId: todoId }).then((watchers) => {
+      setIsWatching(watchers.includes(userId))
+    })
+  }, [todoId, userId])
+
+  const handleToggleWatch = () => {
+    startTransition(async () => {
+      const formData = new FormData()
+      formData.append('id', todoId.toString())
+      formData.append('watch', (!isWatching).toString())
+      await toggleWatchTodo(formData)
+      setIsWatching(!isWatching)
+      router.refresh()
+    })
+  }
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={handleToggleWatch}
+      disabled={isPending}
+      className={`gap-2 ${
+        isWatching
+          ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
+          : 'text-gray-600 hover:text-gray-700 hover:bg-gray-50'
+      }`}
+    >
+      {isWatching ? (
+        <>
+          <Eye className="h-4 w-4" />
+          Watching
+        </>
+      ) : (
+        <>
+          <EyeOff className="h-4 w-4" />
+          Watch
+        </>
+      )}
+    </Button>
   )
 }

@@ -1,19 +1,12 @@
 'use client'
-import {
-  useOptimistic,
-  useTransition,
-  useState,
-  useCallback,
-  memo,
-  useMemo,
-} from 'react'
+import { useState, useCallback, memo, useMemo } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { addTodo } from '@/lib/actions'
-import { deleteTodo, bulkDeleteTodos } from '@/actions/delete-todos'
-import { updateDueDate, bulkUpdateDueDate } from '@/actions/update-due-date'
-import { bulkToggleCompleted } from '@/actions/toggle-completed'
+import { deleteTodo } from '@/actions/delete-todos'
+import { updateDueDate } from '@/actions/update-due-date'
+import { toggleTodoCompleted } from '@/actions/toggle-completed'
 import { createSampleTodos } from '@/actions/create-sample-todos'
 import { redirectToCheckout } from '@/app/api/stripe/client'
 import {
@@ -55,12 +48,22 @@ import {
 } from '@/components/ui/dropdown-menu'
 import Link from 'next/link'
 
+// Track all edits in one place
+type PendingEdit =
+  | { type: 'delete'; ids: Set<number> }
+  | { type: 'reschedule'; ids: Set<number>; dueDate: Date | null }
+  | { type: 'toggleCompleted'; ids: Set<number>; completed: boolean }
+  | { type: 'add'; todo: Todo }
+
+// Constants
+const MUTATION_THRESHOLD = 10
+
 function AddTodoForm({
-  onAddTodo,
   onClose,
+  setPendingEdits,
 }: {
-  onAddTodo: (todo: Todo) => void
   onClose: () => void
+  setPendingEdits: React.Dispatch<React.SetStateAction<PendingEdit[]>>
 }) {
   const [selectedDueDate, setSelectedDueDate] = useState<Date | undefined>(
     undefined,
@@ -82,6 +85,7 @@ function AddTodoForm({
     const optimisticTodo: Todo = {
       id: -Math.floor(Math.random() * 1000) - 1,
       title: text,
+      description: null,
       completed: false,
       dueDate: selectedDueDate || null,
       assignedToId: null,
@@ -89,8 +93,7 @@ function AddTodoForm({
       updatedAt: new Date(),
     }
 
-    // Add optimistic todo to the UI
-    onAddTodo(optimisticTodo)
+    setPendingEdits((prev) => [...prev, { type: 'add', todo: optimisticTodo }])
 
     // Reset form state
     setTodoText('')
@@ -265,7 +268,6 @@ export function TodosPageClient({
   email: string
   name: string | null
 }) {
-  const [, startTransition] = useTransition()
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTodoIds, setSelectedTodoIds] = useState<Set<number>>(new Set())
   const [isRescheduleCalendarOpen, setIsRescheduleCalendarOpen] =
@@ -276,69 +278,36 @@ export function TodosPageClient({
   const [isAddTodoOpen, setIsAddTodoOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
-  // Track pending bulk edits
-  type PendingEdit =
-    | { type: 'delete'; ids: Set<number> }
-    | { type: 'reschedule'; ids: Set<number>; dueDate: Date | null }
-    | { type: 'toggleCompleted'; ids: Set<number>; completed: boolean }
-
+  // Track all edits in one place
   const [pendingEdits, setPendingEdits] = useState<PendingEdit[]>([])
-
-  // Optimistic state management for single-todo actions
-  const [optimisticTodos, updateOptimisticTodos] = useOptimistic(
-    todos,
-    (
-      state,
-      action:
-        | { type: 'add'; todo: Todo }
-        | { type: 'delete'; id: number }
-        | { type: 'updateDueDate'; id: number; dueDate: Date | null }
-        | { type: 'toggleCompleted'; id: number; completed: boolean },
-    ) => {
-      if (action.type === 'add') {
-        return [...state, action.todo]
-      } else if (action.type === 'delete') {
-        return state.filter((todo) => todo.id !== action.id)
-      } else if (action.type === 'updateDueDate') {
-        return state.map((todo) =>
-          todo.id === action.id ? { ...todo, dueDate: action.dueDate } : todo,
-        )
-      } else if (action.type === 'toggleCompleted') {
-        return state.map((todo) =>
-          todo.id === action.id
-            ? { ...todo, completed: action.completed }
-            : todo,
-        )
-      }
-      return state
-    },
-  )
 
   // Memoize the displayed todos to prevent unnecessary recalculations
   const displayedTodos = useMemo(() => {
-    return optimisticTodos
-      .map((todo) => {
-        const current = { ...todo }
+    let current = [...todos]
 
-        for (const edit of pendingEdits) {
-          if (!edit.ids.has(todo.id)) continue
+    for (const edit of pendingEdits) {
+      if (edit.type === 'add') {
+        current = [...current, edit.todo]
+      } else {
+        current = current
+          .map((todo) => {
+            if (!edit.ids.has(todo.id)) return todo
 
-          switch (edit.type) {
-            case 'delete':
-              return null
-            case 'reschedule':
-              current.dueDate = edit.dueDate
-              break
-            case 'toggleCompleted':
-              current.completed = edit.completed
-              break
-          }
-        }
+            switch (edit.type) {
+              case 'delete':
+                return null
+              case 'reschedule':
+                return { ...todo, dueDate: edit.dueDate }
+              case 'toggleCompleted':
+                return { ...todo, completed: edit.completed }
+            }
+          })
+          .filter(Boolean) as Todo[]
+      }
+    }
 
-        return current
-      })
-      .filter(Boolean) as Todo[]
-  }, [optimisticTodos, pendingEdits])
+    return current
+  }, [todos, pendingEdits])
 
   // Memoize the filtered todos
   const filteredTodos = useMemo(
@@ -369,43 +338,38 @@ export function TodosPageClient({
   }, [])
 
   const handleDelete = useCallback((id: number) => {
-    startTransition(() => {
-      updateOptimisticTodos({ type: 'delete', id })
-      setSelectedTodoIds((prev) => {
-        const newSet = new Set(prev)
-        newSet.delete(id)
-        return newSet
-      })
-      deleteTodo(id)
+    setPendingEdits((prev) => [...prev, { type: 'delete', ids: new Set([id]) }])
+    setSelectedTodoIds((prev) => {
+      const newSet = new Set(prev)
+      newSet.delete(id)
+      return newSet
     })
+    deleteTodo(id)
   }, [])
 
   const handleToggleCompleted = useCallback(
     (id: number, completed: boolean) => {
-      startTransition(() => {
-        updateOptimisticTodos({
-          type: 'toggleCompleted',
-          id,
-          completed,
-        })
-        bulkToggleCompleted([id], completed)
-      })
+      setPendingEdits((prev) => [
+        ...prev,
+        { type: 'toggleCompleted', ids: new Set([id]), completed },
+      ])
+      const formData = new FormData()
+      formData.append('id', id.toString())
+      formData.append('completed', completed.toString())
+      toggleTodoCompleted(formData)
     },
     [],
   )
 
   const handleUpdateDueDate = useCallback((id: number, date: Date | null) => {
-    startTransition(() => {
-      updateOptimisticTodos({
-        type: 'updateDueDate',
-        id,
-        dueDate: date,
-      })
-      const formData = new FormData()
-      formData.append('id', id.toString())
-      formData.append('dueDate', date?.toISOString() || '')
-      updateDueDate(formData)
-    })
+    setPendingEdits((prev) => [
+      ...prev,
+      { type: 'reschedule', ids: new Set([id]), dueDate: date },
+    ])
+    const formData = new FormData()
+    formData.append('id', id.toString())
+    formData.append('dueDate', date?.toISOString() || '')
+    updateDueDate(formData)
   }, [])
 
   // Memoize the todo groups
@@ -424,8 +388,8 @@ export function TodosPageClient({
     ])
     setSelectedTodoIds(new Set())
 
-    // Send the actual request
-    bulkDeleteTodos(idsToDelete)
+    // The server action handles batching/scheduling
+    deleteTodo(idsToDelete)
   }
 
   // Reschedule multiple todos
@@ -438,8 +402,11 @@ export function TodosPageClient({
     setSelectedTodoIds(new Set())
     setIsRescheduleCalendarOpen(false)
 
-    // Send the actual request (non-blocking)
-    bulkUpdateDueDate(idsToReschedule, date || null)
+    // The server action handles batching/scheduling
+    const formData = new FormData()
+    formData.append('ids', JSON.stringify(idsToReschedule))
+    formData.append('dueDate', date?.toISOString() || '')
+    updateDueDate(formData)
   }
 
   // Mark multiple todos as completed/uncompleted
@@ -451,8 +418,11 @@ export function TodosPageClient({
     ])
     setSelectedTodoIds(new Set())
 
-    // Send the actual request (non-blocking)
-    bulkToggleCompleted(idsToToggle, completed)
+    // The server action handles batching/scheduling
+    const formData = new FormData()
+    formData.append('ids', JSON.stringify(idsToToggle))
+    formData.append('completed', completed.toString())
+    toggleTodoCompleted(formData)
   }
 
   // Select or deselect all visible todos
@@ -593,12 +563,8 @@ export function TodosPageClient({
                   <DialogTitle>Add New Todo</DialogTitle>
                 </DialogHeader>
                 <AddTodoForm
-                  onAddTodo={(todo) =>
-                    startTransition(() => {
-                      updateOptimisticTodos({ type: 'add', todo })
-                    })
-                  }
                   onClose={() => setIsAddTodoOpen(false)}
+                  setPendingEdits={setPendingEdits}
                 />
               </>
             )}
@@ -747,11 +713,16 @@ export function TodosPageClient({
         {displayedTodos.length === 0 && !searchQuery ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground mb-4">No todos yet.</p>
-            <form action={createSampleTodos}>
-              <Button type="submit" variant="outline">
-                Create sample todos
-              </Button>
-            </form>
+            <Button
+              onClick={async () => {
+                const result = await createSampleTodos()
+                // The server action will trigger a revalidation of the page
+                // so we don't need to do anything with the result
+              }}
+              variant="outline"
+            >
+              Create sample todos
+            </Button>
           </div>
         ) : filteredTodos.length === 0 ? (
           <p className="text-center text-muted-foreground py-4">

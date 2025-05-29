@@ -1,25 +1,31 @@
 import { Client } from "@upstash/qstash"
 import { processDeleteTodos } from "@/actions/delete-todos"
-import { bulkUpdateDueDate } from "@/actions/update-due-date"
-import { bulkToggleCompleted } from "@/actions/toggle-completed"
+import { processUpdateDueDate } from "@/actions/update-due-date"
+import { processToggleCompleted } from "@/actions/toggle-completed"
 
 export type QueueTask = 
   | { type: "deleteTodo"; key: `delete-todo-${number}`; id: number }
-  | { type: "deleteTodos"; key: `delete-todos-${string}`; ids: number[] }
-  | { type: "updateDueDate"; key: `update-due-date-${string}`; ids: number[]; dueDate: string | null }
-  | { type: "toggleCompleted"; key: `toggle-completed-${string}`; ids: number[]; completed: boolean }
+  | { type: "deleteTodos"; key: `delete-todos-${string}`; ids: number[]; userId: string }
+  | { type: "updateDueDate"; key: `update-due-date-${string}`; ids: number[]; dueDate: string | null; userId: string }
+  | { type: "toggleCompleted"; key: `toggle-completed-${string}`; ids: number[]; completed: boolean; userId: string }
 
 export async function processTask(task: QueueTask) {
   try {
     switch (task.type) {
       case "deleteTodos":
-        await processDeleteTodos(task.ids)
+        await processDeleteTodos(task.ids, task.userId)
         break
       case "updateDueDate":
-        await bulkUpdateDueDate(task.ids, task.dueDate ? new Date(task.dueDate) : null)
+        await processUpdateDueDate(task.ids, { 
+          dueDate: task.dueDate ? new Date(task.dueDate) : null,
+          userId: task.userId,
+        })
         break
       case "toggleCompleted":
-        await bulkToggleCompleted(task.ids, task.completed)
+        await processToggleCompleted(task.ids, { 
+          completed: task.completed,
+          userId: task.userId,
+        })
         break
       default: {
         throw new Error(`Unknown task type: ${task.type}`)

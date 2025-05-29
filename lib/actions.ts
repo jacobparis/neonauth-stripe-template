@@ -7,6 +7,7 @@ import { eq, desc, count, isNull } from "drizzle-orm"
 import { getStripePlan } from "@/app/api/stripe/plans"
 import { stackServerApp, getAccessToken } from "@/stack"
 import { cookies } from "next/headers"
+import { createNotification, watchTask, notifyWatchers, unwatchTask } from '@/app/api/notifications/notifications'
 
 export async function getTodos() {
   const accessToken = await getAccessToken(await cookies())
@@ -60,7 +61,7 @@ export async function getUsers() {
 }
 
 export async function addTodo(formData: FormData) {
-  const title = formData.get("text") as string // Keep the form field name as "text" for backward compatibility
+  const title = formData.get("text") as string
   const dueDateStr = formData.get("dueDate") as string | null
 
   if (!title?.trim()) {
@@ -78,12 +79,10 @@ export async function addTodo(formData: FormData) {
     })
 
     if (!userMetrics) {
-      // Create initial metrics record for user
       const [newMetrics] = await db.insert(user_metrics).values({ userId: user.id, todosCreated: 0 }).returning()
       userMetrics = newMetrics
     }
 
-    // Count total todos
     const totalTodos = await db
       .select({ count: count() })
       .from(todos)
@@ -94,10 +93,11 @@ export async function addTodo(formData: FormData) {
       return { error: "You have reached your todo limit. Delete some todos to create new ones." }
     }
 
-    await db.insert(todos).values({
-      title, // Use title instead of text
+    const [todo] = await db.insert(todos).values({
+      title,
       dueDate: dueDateStr ? new Date(dueDateStr) : null,
-    })
+      assignedToId: user.id,
+    }).returning()
 
     await db
       .update(user_metrics)
@@ -106,6 +106,19 @@ export async function addTodo(formData: FormData) {
         updatedAt: new Date(),
       })
       .where(eq(user_metrics.id, userMetrics.id))
+
+    // Add creator as a watcher
+    await watchTask({ 
+      taskId: todo.id, 
+      userId: user.id 
+    })
+    
+    await createNotification({
+      userId: user.id,
+      type: "info",
+      message: `New todo created: ${title}`,
+      taskId: todo.id,
+    })
 
     revalidatePath("/")
     return { success: true }
@@ -214,9 +227,13 @@ export async function updateTodo(formData: FormData) {
   }
 
   const todoId = parseInt(id)
+  const user = await stackServerApp.getUser()
+  if (!user) {
+    throw new Error("Not authenticated")
+  }
 
   try {
-    await db
+    const [todo] = await db
       .update(todos)
       .set({
         title: title as string,
@@ -224,11 +241,60 @@ export async function updateTodo(formData: FormData) {
         updatedAt: new Date(),
       })
       .where(eq(todos.id, todoId))
+      .returning()
+
+    // Notify all watchers of the update
+    await notifyWatchers({
+      taskId: todo.id,
+      message: `Todo updated: ${todo.title}`,
+      type: "info"
+    })
 
     revalidatePath('/')
     return { success: true }
   } catch (error) {
     console.error('Failed to update todo:', error)
     return { error: 'Failed to update todo' }
+  }
+}
+
+// Add a new action to watch/unwatch todos
+export async function toggleWatchTodo(formData: FormData) {
+  const id = formData.get('id')
+  const watch = formData.get('watch') === 'true'
+
+  if (!id || typeof id !== 'string') {
+    throw new Error('Invalid todo id')
+  }
+
+  const todoId = parseInt(id)
+  const user = await stackServerApp.getUser()
+  if (!user) {
+    throw new Error("Not authenticated")
+  }
+
+  try {
+    if (watch) {
+      await watchTask({ 
+        taskId: todoId, 
+        userId: user.id 
+      })
+      await createNotification({
+        userId: user.id,
+        type: "info",
+        message: "You are now watching this todo",
+        taskId: todoId,
+      })
+    } else {
+      await unwatchTask({ 
+        taskId: todoId, 
+        userId: user.id 
+      })
+    }
+
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to toggle watch status:', error)
+    return { error: 'Failed to update watch status' }
   }
 }

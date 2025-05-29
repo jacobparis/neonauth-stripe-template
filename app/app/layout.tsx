@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { AppUserSettings } from '@/components/app-user-settings'
 import { StackProvider, StackTheme } from '@stackframe/stack'
 import { stackServerApp } from '@/stack'
+import { NotificationsMenu } from '@/app/components/notifications'
 
 export default async function AppLayout({
   children,
@@ -30,6 +31,7 @@ export default async function AppLayout({
 
             <div className="grow" />
 
+            <NotificationsMenu />
             <AppUserSettings />
           </header>
 
