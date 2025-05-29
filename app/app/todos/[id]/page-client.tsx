@@ -14,13 +14,10 @@ import { format, isValid } from 'date-fns'
 import { deleteTodo } from '@/actions/delete-todos'
 import { updateDueDate } from '@/actions/update-due-date'
 import { toggleTodoCompleted } from '@/actions/toggle-completed'
-import { updateTodo, toggleWatchTodo } from '@/lib/actions'
+import { updateTodo } from '@/lib/actions'
 import { useRouter } from 'next/navigation'
-import { CalendarIcon, ArrowLeft, Trash2, Eye, EyeOff } from 'lucide-react'
+import { CalendarIcon, Trash2 } from 'lucide-react'
 import type { Todo } from '@/drizzle/schema'
-import Link from 'next/link'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { getTaskWatchers } from '@/app/api/notifications/notifications'
 
 export function TodoItemPageClient({
   todo,
@@ -179,126 +176,7 @@ export function TodoItemPageClient({
             Delete
           </Button>
         </div>
-
-        {/* Activity Section */}
-        <div className="mt-16">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-900 tracking-wide uppercase">
-              Activity
-            </h3>
-            <WatchButton todoId={todo.id} userId={userId} />
-          </div>
-          <div className="space-y-4 mt-6">
-            <div className="flex gap-3 group">
-              <div className="flex flex-col items-center">
-                <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm">
-                  <AvatarFallback className="bg-gradient-to-br from-orange-400 to-orange-600 text-white text-xs font-semibold">
-                    {name?.[0]?.toUpperCase() || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-medium text-gray-900">
-                    {name || email}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {format(new Date(todo.createdAt), 'PPP')}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600">Created this task</p>
-              </div>
-            </div>
-            {todo.updatedAt && (
-              <div className="flex gap-3 group">
-                <div className="flex flex-col items-center">
-                  <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm">
-                    <AvatarFallback className="bg-gradient-to-br from-orange-400 to-orange-600 text-white text-xs font-semibold">
-                      {name?.[0]?.toUpperCase() || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-gray-900">
-                      {name || email}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {format(new Date(todo.updatedAt), 'PPP')}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-600">Updated this task</p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Add Comment */}
-          <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200/40">
-            <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm">
-              <AvatarFallback className="bg-gradient-to-br from-orange-400 to-orange-600 text-white text-xs font-semibold">
-                {name?.[0]?.toUpperCase() || 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <div className="bg-gray-50/50 rounded-lg p-3 border border-gray-200/40 hover:bg-gray-50/80 transition-all duration-200 cursor-text">
-                <p className="text-sm text-gray-500 font-medium">
-                  Add a comment...
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
-  )
-}
-
-function WatchButton({ todoId, userId }: { todoId: number; userId: string }) {
-  const [isWatching, setIsWatching] = useState(false)
-  const [isPending, startTransition] = useTransition()
-  const router = useRouter()
-
-  useEffect(() => {
-    getTaskWatchers({ taskId: todoId }).then((watchers) => {
-      setIsWatching(watchers.includes(userId))
-    })
-  }, [todoId, userId])
-
-  const handleToggleWatch = () => {
-    startTransition(async () => {
-      const formData = new FormData()
-      formData.append('id', todoId.toString())
-      formData.append('watch', (!isWatching).toString())
-      await toggleWatchTodo(formData)
-      setIsWatching(!isWatching)
-      router.refresh()
-    })
-  }
-
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={handleToggleWatch}
-      disabled={isPending}
-      className={`gap-2 ${
-        isWatching
-          ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
-          : 'text-gray-600 hover:text-gray-700 hover:bg-gray-50'
-      }`}
-    >
-      {isWatching ? (
-        <>
-          <Eye className="h-4 w-4" />
-          Watching
-        </>
-      ) : (
-        <>
-          <EyeOff className="h-4 w-4" />
-          Watch
-        </>
-      )}
-    </Button>
   )
 }

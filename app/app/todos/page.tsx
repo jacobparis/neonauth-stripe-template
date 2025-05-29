@@ -1,8 +1,4 @@
 import { TodosPageClient } from './page-client'
-import { db } from '@/lib/db'
-import { todos } from '@/drizzle/schema'
-import { desc } from 'drizzle-orm'
-import { getStripePlan } from '@/app/api/stripe/plans'
 import { stackServerApp } from '@/stack'
 import { getTodos, getUserTodoMetrics } from '@/lib/actions'
 import { Suspense } from 'react'
