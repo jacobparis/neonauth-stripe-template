@@ -55,9 +55,6 @@ type PendingEdit =
   | { type: 'toggleCompleted'; ids: Set<number>; completed: boolean }
   | { type: 'add'; todo: Todo }
 
-// Constants
-const MUTATION_THRESHOLD = 10
-
 function AddTodoForm({
   onClose,
   setPendingEdits,
@@ -270,7 +267,9 @@ export function TodosPageClient({
   name: string | null
 }) {
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedTodoIds, setSelectedTodoIds] = useState<Set<number>>(new Set())
+  const [selectedTodoIds, setSelectedTodoIds] = useState(
+    () => new Set<number>(),
+  )
   const [isRescheduleCalendarOpen, setIsRescheduleCalendarOpen] =
     useState(false)
   const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(

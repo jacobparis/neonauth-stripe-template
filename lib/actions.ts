@@ -255,7 +255,7 @@ export async function updateTodo(formData: FormData) {
     })
 
     revalidatePath('/')
-    return { success: true }
+    return 
   } catch (error) {
     console.error('Failed to update todo:', error)
     return { error: 'Failed to update todo' }
