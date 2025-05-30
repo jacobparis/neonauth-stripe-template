@@ -26,11 +26,6 @@ export async function getTodos() {
 }
 
 export async function getTodo(id: number) {
-  const accessToken = await getAccessToken(await cookies())
-  if (!accessToken) {
-    throw new Error("Not authenticated")
-  }
-
   if (isNaN(id)) {
     throw new Error("Invalid todo ID")
   }

@@ -206,6 +206,7 @@ const TodoItem = memo(function TodoItem({
         <div className="min-w-0">
           <Link
             href={`/app/todos/${todo.id}`}
+            prefetch={true}
             className={`text-sm block truncate hover:underline ${
               todo.completed ? 'line-through text-muted-foreground' : ''
             }`}
