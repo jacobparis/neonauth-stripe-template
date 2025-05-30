@@ -228,13 +228,22 @@ export async function updateTodo(formData: FormData) {
   }
 
   try {
+    // Only update fields that are provided
+    const updateData: any = {
+      updatedAt: new Date(),
+    }
+    
+    if (title !== null) {
+      updateData.title = title as string
+    }
+    
+    if (description !== null) {
+      updateData.description = description as string
+    }
+
     const [todo] = await db
       .update(todos)
-      .set({
-        title: title as string,
-        description: description as string,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(todos.id, todoId))
       .returning()
 

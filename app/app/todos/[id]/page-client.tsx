@@ -71,9 +71,7 @@ export function TodoItemPageClient({ todo }: { todo: Todo }) {
   }
 
   const handleUpdateDescription = (newDescription: string) => {
-    setDescription(newDescription)
     startTransition(async () => {
-      if (!title.trim()) return
       const formData = new FormData()
       formData.append('id', todo.id.toString())
       formData.append('description', newDescription)
@@ -98,7 +96,8 @@ export function TodoItemPageClient({ todo }: { todo: Todo }) {
         <div className="mt-2">
           <Textarea
             value={description}
-            onChange={(e) => handleUpdateDescription(e.target.value)}
+            onChange={(e) => setDescription(e.target.value)}
+            onBlur={(e) => handleUpdateDescription(e.target.value)}
             placeholder="Add a description..."
             className="w-full p-4 bg-gray-50/50 rounded-xl border border-gray-200 hover:bg-gray-50/80 focus:bg-white focus:border-gray-300 transition-all duration-200 resize-none min-h-[60px] text-base font-medium text-gray-700 placeholder:text-gray-500 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
             rows={3}
