@@ -12,7 +12,7 @@ import { format } from 'date-fns'
 
 // Import the loading component
 import { WatchButton } from './watch-button'
-import { CommentForm } from './comment-form'
+import { CommentsSection } from './comments-section'
 
 export default async function TodoItemPage({
   params,
@@ -58,7 +58,7 @@ export default async function TodoItemPage({
             <WatchButton todoId={todo.id} userId={user.id} />
           </Suspense>
         </div>
-        <div className="space-y-4 mt-6">
+        <div className="mt-6">
           <div className="flex gap-3 group">
             <div className="flex flex-col items-center">
               <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm">
@@ -84,7 +84,7 @@ export default async function TodoItemPage({
             </div>
           </div>
           {todo.updatedAt && (
-            <div className="flex gap-3 group">
+            <div className="flex gap-3 group mt-4">
               <div className="flex flex-col items-center">
                 <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm">
                   <AvatarImage
@@ -110,57 +110,18 @@ export default async function TodoItemPage({
             </div>
           )}
 
-          {/* Comments */}
-          {comments.map((comment) => (
-            <div key={comment.id} className="flex gap-3 group">
-              <div className="flex flex-col items-center">
-                <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm">
-                  <AvatarImage
-                    src={
-                      comment.userId === user.id
-                        ? user.profileImageUrl || undefined
-                        : comment.user?.image || undefined
-                    }
-                    alt={comment.user?.name || comment.user?.email || ''}
-                  />
-                  <AvatarFallback className="bg-gradient-to-br from-orange-400 to-orange-600 text-white text-xs font-semibold">
-                    {comment.user?.name?.[0]?.toUpperCase() ||
-                      comment.user?.email?.[0]?.toUpperCase() ||
-                      'U'}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-medium text-gray-900">
-                    {comment.user?.name || comment.user?.email}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {format(new Date(comment.createdAt), 'PPP')}
-                  </span>
-                </div>
-                <div className="bg-gray-50/50 rounded-lg p-3 border border-gray-200/40">
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                    {comment.content}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Add Comment Form */}
-        <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200/40">
-          <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm">
-            <AvatarImage
-              src={user.profileImageUrl || undefined}
-              alt={user.displayName || user.primaryEmail || ''}
+          <div className="mt-4">
+            <CommentsSection
+              todoId={todo.id}
+              initialComments={comments}
+              user={{
+                id: user.id,
+                displayName: user.displayName,
+                primaryEmail: user.primaryEmail,
+                profileImageUrl: user.profileImageUrl,
+              }}
             />
-            <AvatarFallback className="bg-gradient-to-br from-orange-400 to-orange-600 text-white text-xs font-semibold">
-              {user.displayName?.[0]?.toUpperCase() || 'U'}
-            </AvatarFallback>
-          </Avatar>
-          <CommentForm todoId={todo.id} />
+          </div>
         </div>
       </div>
     </div>

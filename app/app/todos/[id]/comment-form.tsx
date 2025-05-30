@@ -1,52 +1,58 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { addComment } from '@/lib/actions'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Send } from 'lucide-react'
+import { useRef } from 'react'
 
-export function CommentForm({ todoId }: { todoId: number }) {
-  const [content, setContent] = useState('')
-  const [isPending, startTransition] = useTransition()
+interface CommentFormProps {
+  todoId: number
+  onSubmit?: (formData: FormData) => Promise<void>
+  isPending?: boolean
+}
 
-  const handleSubmit = (formData: FormData) => {
-    if (!content.trim()) return
+export function CommentForm({ todoId, onSubmit, isPending }: CommentFormProps) {
+  const formRef = useRef<HTMLFormElement>(null)
 
-    startTransition(async () => {
-      const result = await addComment(formData)
-      if (result.success) {
-        setContent('')
+  const handleSubmit = async (formData: FormData) => {
+    if (onSubmit) {
+      await onSubmit(formData)
+      formRef.current?.reset()
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      const formData = new FormData(formRef.current!)
+      const content = formData.get('content') as string
+      if (content?.trim()) {
+        handleSubmit(formData)
       }
-    })
+    }
   }
 
   return (
-    <div className="flex-1">
-      <form action={handleSubmit} className="space-y-3">
-        <input type="hidden" name="todoId" value={todoId} />
+    <form ref={formRef} action={handleSubmit} className="flex-1">
+      <input type="hidden" name="todoId" value={todoId} />
+      <div className="space-y-3">
         <Textarea
           name="content"
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
           placeholder="Add a comment..."
-          className="min-h-[80px] border-gray-200/40 focus:border-orange-300 focus:ring-orange-200 resize-none"
+          className="min-h-[80px] resize-none border-gray-200/60 focus:border-orange-300 focus:ring-orange-200"
           disabled={isPending}
+          onKeyDown={handleKeyDown}
         />
-        {content.trim() && (
-          <div className="flex justify-end">
-            <Button
-              type="submit"
-              size="sm"
-              disabled={isPending || !content.trim()}
-              className="bg-orange-500 hover:bg-orange-600"
-            >
-              <Send className="h-4 w-4 mr-2" />
-              {isPending ? 'Posting...' : 'Comment'}
-            </Button>
-          </div>
-        )}
-      </form>
-    </div>
+        <div className="flex justify-end">
+          <Button
+            type="submit"
+            size="sm"
+            className="bg-orange-500 hover:bg-orange-600 text-white"
+            disabled={isPending}
+          >
+            {isPending ? 'Adding...' : 'Add Comment'}
+          </Button>
+        </div>
+      </div>
+    </form>
   )
 }
