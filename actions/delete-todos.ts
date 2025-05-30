@@ -99,21 +99,9 @@ export async function deleteTodo(ids: number | number[]) {
   const todoIds = Array.isArray(ids) ? ids : [ids]
   
   try {
-    // For small operations, do it immediately
-    if (todoIds.length <= 10) {
-      await processDeleteTodos(todoIds)
-      return { success: true }
-    }
-
-    // For larger operations, queue it
-    const job = await publishTask({
-      type: "deleteTodos",
-      key: `delete-todos-${todoIds.sort().join("-")}`,
-      ids: todoIds,
-      userId: user.id,
-    })
-
-    return { success: true, jobId: job.messageId }
+    // Execute immediately instead of queuing
+    await processDeleteTodos(todoIds)
+    return { success: true }
   } catch (error) {
     console.error("Failed to delete todos:", error)
     return { error: "Failed to delete todos" }

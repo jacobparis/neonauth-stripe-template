@@ -19,25 +19,10 @@ export async function toggleTodoCompleted(formData: FormData) {
   const ids = formData.getAll("id").map(id => Number(id))
   const completed = formData.get("completed") === "true"
 
-
-
   try {
-    // For small operations, do it immediately
-    if (ids.length <= 10) {
-      await processToggleCompleted(ids, { completed, userId: user.id })
-      return { success: true }
-    }
-
-    // For larger operations, queue it
-    const job = await publishTask({
-      type: "toggleCompleted",
-      key: `toggle-completed-${ids.sort().join("-")}`,
-      ids: ids,
-      completed,
-      userId: user.id,
-    })
-
-    return { success: true, jobId: job.messageId }
+    // Execute immediately instead of queuing
+    await processToggleCompleted(ids, { completed, userId: user.id })
+    return { success: true }
   } catch (error) {
     console.error("Failed to toggle todos:", error)
     return { error: "Failed to toggle todos" }

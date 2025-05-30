@@ -102,22 +102,9 @@ export async function updateDueDate(formData: FormData) {
   }
 
   try {
-    // For small operations, do it immediately
-    if (todoIds.length <= 10) {
-      await processUpdateDueDate(todoIds, { dueDate })
-      return { success: true }
-    }
-
-    // For larger operations, queue it
-    const job = await publishTask({
-      type: "updateDueDate",
-      key: `update-due-date-${todoIds.sort().join("-")}`,
-      ids: todoIds,
-      dueDate: dueDate?.toISOString() || null,
-      userId: user.id,
-    })
-
-    return { success: true, jobId: job.messageId }
+    // Execute immediately instead of queuing
+    await processUpdateDueDate(todoIds, { dueDate })
+    return { success: true }
   } catch (error) {
     console.error("Failed to update due dates:", error)
     return { error: "Failed to update due dates" }
