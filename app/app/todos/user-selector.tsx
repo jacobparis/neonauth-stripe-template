@@ -19,13 +19,18 @@ import {
 } from '@/components/ui/command'
 import { UserAvatar } from './user-avatar'
 
+// Extend User type to include profileImageUrl from Stack Auth
+type UserWithProfile = UserType & {
+  profileImageUrl: string | null
+}
+
 export function UserSelector({
   users,
   selectedUserId,
   onSelectUser,
   triggerClassName,
 }: {
-  users: UserType[]
+  users: UserWithProfile[]
   selectedUserId: string | null
   onSelectUser: (userId: string | null) => void
   triggerClassName?: string
@@ -47,8 +52,7 @@ export function UserSelector({
             <UserAvatar
               user={{
                 name: selectedUser.name,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                avatarUrl: (selectedUser.raw_json as any)?.avatarUrl,
+                avatarUrl: selectedUser.profileImageUrl,
               }}
               showName
               className="mr-2"
@@ -96,8 +100,7 @@ export function UserSelector({
                       <UserAvatar
                         user={{
                           name: user.name,
-                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                          avatarUrl: (user.raw_json as any)?.avatarUrl,
+                          avatarUrl: user.profileImageUrl,
                         }}
                         showName
                       />

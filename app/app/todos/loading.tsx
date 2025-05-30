@@ -37,10 +37,10 @@ export default function TodosLoading() {
         </div>
 
         {/* Todo Groups */}
-        <div className="grid grid-cols-[1fr_auto_auto_auto]">
+        <div className="grid grid-cols-[1fr_auto_auto_auto_auto]">
           {/* Today's Group */}
-          <div className="col-span-4 grid grid-cols-subgrid">
-            <div className="col-span-4 px-2 py-2 border-t bg-muted/30">
+          <div className="col-span-5 grid grid-cols-subgrid">
+            <div className="col-span-5 px-2 py-2 border-t bg-muted/30">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Skeleton className="h-4 w-4" />
@@ -52,11 +52,14 @@ export default function TodosLoading() {
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="grid grid-cols-subgrid col-span-4 px-2 py-1.5 gap-4"
+                className="grid grid-cols-subgrid col-span-5 px-2 py-1.5 gap-4"
               >
                 <div className="flex items-center gap-2">
                   <Skeleton className="h-4 w-4" />
                   <Skeleton className="h-4 w-48" />
+                </div>
+                <div className="flex items-center">
+                  <Skeleton className="h-6 w-20" />
                 </div>
                 <div className="flex items-center gap-2 justify-end">
                   <Skeleton className="h-6 w-12" />
@@ -67,8 +70,8 @@ export default function TodosLoading() {
           </div>
 
           {/* Upcoming Group */}
-          <div className="col-span-4 grid grid-cols-subgrid">
-            <div className="col-span-4 px-2 py-2 border-t bg-muted/30">
+          <div className="col-span-5 grid grid-cols-subgrid">
+            <div className="col-span-5 px-2 py-2 border-t bg-muted/30">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Skeleton className="h-4 w-4" />
@@ -80,11 +83,14 @@ export default function TodosLoading() {
             {[1, 2].map((i) => (
               <div
                 key={i}
-                className="grid grid-cols-subgrid col-span-4 px-2 py-1.5 gap-4"
+                className="grid grid-cols-subgrid col-span-5 px-2 py-1.5 gap-4"
               >
                 <div className="flex items-center gap-2">
                   <Skeleton className="h-4 w-4" />
                   <Skeleton className="h-4 w-48" />
+                </div>
+                <div className="flex items-center">
+                  <Skeleton className="h-6 w-20" />
                 </div>
                 <div className="flex items-center gap-2 justify-end">
                   <Skeleton className="h-6 w-12" />

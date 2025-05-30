@@ -21,7 +21,7 @@ import {
   Zap,
   MoreVertical,
 } from 'lucide-react'
-import type { Todo } from '@/drizzle/schema'
+import type { Todo, User } from '@/drizzle/schema'
 import {
   Popover,
   PopoverContent,
@@ -47,6 +47,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import Link from 'next/link'
+import { UserSelector } from './user-selector'
+import { UserAvatar } from './user-avatar'
+
+// Extend User type to include profileImageUrl from Stack Auth
+type UserWithProfile = User & {
+  profileImageUrl: string | null
+}
 
 // Track all edits in one place
 type PendingEdit =
@@ -58,15 +65,22 @@ type PendingEdit =
 function AddTodoForm({
   onClose,
   setPendingEdits,
+  users,
+  currentUserId,
 }: {
   onClose: () => void
   setPendingEdits: React.Dispatch<React.SetStateAction<PendingEdit[]>>
+  users: UserWithProfile[]
+  currentUserId: string
 }) {
   const [selectedDueDate, setSelectedDueDate] = useState<Date | undefined>(
     undefined,
   )
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const [todoText, setTodoText] = useState('')
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(
+    currentUserId,
+  )
 
   async function handleAction(formData: FormData) {
     const text = formData.get('text') as string
@@ -78,6 +92,11 @@ function AddTodoForm({
       formData.append('dueDate', selectedDueDate.toISOString())
     }
 
+    // Add assigned user to form data
+    if (selectedUserId) {
+      formData.append('assignedToId', selectedUserId)
+    }
+
     // Create an optimistic todo with a temporary negative ID
     const optimisticTodo: Todo = {
       id: -Math.floor(Math.random() * 1000) - 1,
@@ -85,7 +104,7 @@ function AddTodoForm({
       description: null,
       completed: false,
       dueDate: selectedDueDate || null,
-      assignedToId: null,
+      assignedToId: selectedUserId,
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -95,6 +114,7 @@ function AddTodoForm({
     // Reset form state
     setTodoText('')
     setSelectedDueDate(undefined)
+    setSelectedUserId(currentUserId)
     onClose()
 
     // Send the actual request (non-blocking)
@@ -116,6 +136,16 @@ function AddTodoForm({
           value={todoText}
           onChange={(e) => setTodoText(e.target.value)}
           autoFocus
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Assign to</label>
+        <UserSelector
+          users={users}
+          selectedUserId={selectedUserId}
+          onSelectUser={setSelectedUserId}
+          triggerClassName="w-full justify-start"
         />
       </div>
 
@@ -158,7 +188,7 @@ function AddTodoForm({
 
       <Button type="submit">
         <Plus className="h-4 w-4 mr-2" />
-        Add deadline
+        Add todo
       </Button>
     </form>
   )
@@ -172,6 +202,7 @@ const TodoItem = memo(function TodoItem({
   onDelete,
   onToggleCompleted,
   onUpdateDueDate,
+  users,
 }: {
   todo: Todo
   isSelected: boolean
@@ -179,10 +210,13 @@ const TodoItem = memo(function TodoItem({
   onDelete: (id: number) => void
   onToggleCompleted: (id: number, completed: boolean) => void
   onUpdateDueDate: (id: number, date: Date | null) => void
+  users: UserWithProfile[]
 }) {
+  const assignedUser = users.find((user) => user.id === todo.assignedToId)
+
   return (
     <div
-      className={`grid grid-cols-subgrid col-span-4 px-2 py-1.5 gap-4 ${
+      className={`grid grid-cols-subgrid col-span-5 px-2 py-1.5 gap-4 ${
         todo.completed ? 'bg-muted/30' : ''
       } hover:bg-muted/20 relative group`}
     >
@@ -211,6 +245,21 @@ const TodoItem = memo(function TodoItem({
             {todo.title}
           </Link>
         </div>
+      </div>
+
+      <div className="flex items-center">
+        {assignedUser ? (
+          <UserAvatar
+            user={{
+              name: assignedUser.name,
+              avatarUrl: assignedUser.profileImageUrl,
+            }}
+            showName={false}
+            className="text-xs"
+          />
+        ) : (
+          <span className="text-xs text-muted-foreground">Unassigned</span>
+        )}
       </div>
 
       <div className="flex items-center gap-2 justify-end -mr-2">
@@ -259,12 +308,14 @@ export function TodosPageClient({
   userId,
   email,
   name,
+  users,
 }: {
   todos: Todo[]
   todoLimit: number
   userId: string
   email: string
   name: string | null
+  users: UserWithProfile[]
 }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTodoIds, setSelectedTodoIds] = useState(
@@ -565,6 +616,8 @@ export function TodosPageClient({
                 <AddTodoForm
                   onClose={() => setIsAddTodoOpen(false)}
                   setPendingEdits={setPendingEdits}
+                  users={users}
+                  currentUserId={userId}
                 />
               </>
             )}
@@ -729,14 +782,14 @@ export function TodosPageClient({
             No todos match your search
           </p>
         ) : (
-          <div className="grid grid-cols-[1fr_auto_auto_auto]">
+          <div className="grid grid-cols-[1fr_auto_auto_auto_auto]">
             {todoGroups.map((group) => (
               <div
                 key={group.label}
-                className="col-span-4 grid grid-cols-subgrid"
+                className="col-span-5 grid grid-cols-subgrid"
               >
                 {/* Date Header */}
-                <div className={`col-span-4 px-2 py-2 border-t bg-muted/30}`}>
+                <div className={`col-span-5 px-2 py-2 border-t bg-muted/30}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {group.isPast ? (
@@ -791,6 +844,7 @@ export function TodosPageClient({
                         onDelete={handleDelete}
                         onToggleCompleted={handleToggleCompleted}
                         onUpdateDueDate={handleUpdateDueDate}
+                        users={users}
                       />
                     ))}
                   </div>

@@ -1,5 +1,5 @@
 import { TodoItemPageClient } from './page-client'
-import { getTodo } from '@/lib/actions'
+import { getTodo, getUsersWithProfiles } from '@/lib/actions'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 
@@ -19,7 +19,11 @@ export default async function TodoItemPage({
 }) {
   const { id } = await params
   const todoId = parseInt(id, 10)
-  const todo = await getTodo(todoId)
+
+  const [todo, users] = await Promise.all([
+    getTodo(todoId),
+    getUsersWithProfiles(),
+  ])
 
   if (isNaN(todoId) || !todo) {
     notFound()
@@ -37,7 +41,7 @@ export default async function TodoItemPage({
         </Button>
       </div>
 
-      <TodoItemPageClient todo={todo} />
+      <TodoItemPageClient todo={todo} users={users} />
 
       {/* Activity Section */}
       <div className="px-6 mt-16">

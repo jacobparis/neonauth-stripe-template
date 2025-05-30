@@ -14,12 +14,24 @@ import { format, isValid } from 'date-fns'
 import { deleteTodo } from '@/actions/delete-todos'
 import { updateDueDate } from '@/actions/update-due-date'
 import { toggleTodoCompleted } from '@/actions/toggle-completed'
-import { updateTodo } from '@/lib/actions'
+import { updateTodo, updateTodoAssignment } from '@/lib/actions'
 import { useRouter } from 'next/navigation'
-import { CalendarIcon, Trash2 } from 'lucide-react'
-import type { Todo } from '@/drizzle/schema'
+import { CalendarIcon, Trash2, UserIcon } from 'lucide-react'
+import type { Todo, User } from '@/drizzle/schema'
+import { UserSelector } from '../user-selector'
 
-export function TodoItemPageClient({ todo }: { todo: Todo }) {
+// Extend User type to include profileImageUrl from Stack Auth
+type UserWithProfile = User & {
+  profileImageUrl: string | null
+}
+
+export function TodoItemPageClient({
+  todo,
+  users,
+}: {
+  todo: Todo
+  users: UserWithProfile[]
+}) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [date, setDate] = useState<Date | undefined>(
@@ -28,6 +40,9 @@ export function TodoItemPageClient({ todo }: { todo: Todo }) {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const [title, setTitle] = useState(todo.title)
   const [description, setDescription] = useState(todo.description || '')
+  const [assignedUserId, setAssignedUserId] = useState<string | null>(
+    todo.assignedToId,
+  )
 
   const handleDelete = () => {
     startTransition(async () => {
@@ -54,6 +69,34 @@ export function TodoItemPageClient({ todo }: { todo: Todo }) {
     })
     setDate(newDate)
     setIsCalendarOpen(false)
+  }
+
+  const handleUpdateAssignment = (userId: string | null) => {
+    const previousAssignedUserId = assignedUserId
+
+    // Optimistic update
+    setAssignedUserId(userId)
+
+    startTransition(async () => {
+      try {
+        const formData = new FormData()
+        formData.append('id', todo.id.toString())
+        if (userId) {
+          formData.append('assignedToId', userId)
+        }
+        const result = await updateTodoAssignment(formData)
+
+        if (result?.error) {
+          // Revert optimistic update on error
+          setAssignedUserId(previousAssignedUserId)
+          console.error('Failed to update assignment:', result.error)
+        }
+      } catch (error) {
+        // Revert optimistic update on error
+        setAssignedUserId(previousAssignedUserId)
+        console.error('Failed to update assignment:', error)
+      }
+    })
   }
 
   return (
@@ -100,6 +143,16 @@ export function TodoItemPageClient({ todo }: { todo: Todo }) {
               >
                 {todo.completed ? 'Completed' : 'Done'}
               </Button>
+
+              <div className="flex items-center gap-2">
+                <UserIcon className="h-4 w-4 text-gray-500" />
+                <UserSelector
+                  users={users}
+                  selectedUserId={assignedUserId}
+                  onSelectUser={handleUpdateAssignment}
+                  triggerClassName="bg-gray-50/60 rounded-lg border border-gray-200/40 hover:bg-gray-100/60"
+                />
+              </div>
 
               <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                 <PopoverTrigger asChild>

@@ -55,9 +55,41 @@ export async function getUsers() {
   }
 }
 
+export async function getUsersWithProfiles() {
+  try {
+    const dbUsers = await db.select().from(users_sync).where(isNull(users_sync.deleted_at)).orderBy(users_sync.name)
+    
+    // For each user, try to get their Stack Auth profile
+    const usersWithProfiles = await Promise.all(
+      dbUsers.map(async (dbUser) => {
+        try {
+          // Get the Stack Auth user data for profile image
+          const stackUser = await stackServerApp.getUser(dbUser.id)
+          return {
+            ...dbUser,
+            profileImageUrl: stackUser?.profileImageUrl || null,
+          }
+        } catch (error) {
+          // If we can't get Stack Auth data, just use database data
+          return {
+            ...dbUser,
+            profileImageUrl: null,
+          }
+        }
+      })
+    )
+    
+    return usersWithProfiles
+  } catch (error) {
+    console.error("Failed to fetch users with profiles:", error)
+    return []
+  }
+}
+
 export async function addTodo(formData: FormData) {
   const title = formData.get("text") as string
   const dueDateStr = formData.get("dueDate") as string | null
+  const assignedToId = formData.get("assignedToId") as string | null
 
   if (!title?.trim()) {
     return { error: "Todo title is required" }
@@ -91,7 +123,7 @@ export async function addTodo(formData: FormData) {
     const [todo] = await db.insert(todos).values({
       title,
       dueDate: dueDateStr ? new Date(dueDateStr) : null,
-      assignedToId: user.id,
+      assignedToId: assignedToId || user.id,
     }).returning()
 
     await db
@@ -255,10 +287,9 @@ export async function updateTodo(formData: FormData) {
     })
 
     revalidatePath('/')
-    return 
   } catch (error) {
     console.error('Failed to update todo:', error)
-    return { error: 'Failed to update todo' }
+    throw new Error('Failed to update todo')
   }
 }
 
@@ -384,5 +415,48 @@ export async function addComment(formData: FormData) {
   } catch (error) {
     console.error("Failed to add comment:", error)
     return { error: "Failed to add comment" }
+  }
+}
+
+export async function updateTodoAssignment(formData: FormData) {
+  const id = formData.get('id')
+  const assignedToId = formData.get('assignedToId') as string | null
+
+  if (!id || typeof id !== 'string') {
+    throw new Error('Invalid todo id')
+  }
+
+  const todoId = parseInt(id)
+  const user = await stackServerApp.getUser()
+  if (!user) {
+    throw new Error("Not authenticated")
+  }
+
+  try {
+    const [todo] = await db
+      .update(todos)
+      .set({ 
+        assignedToId: assignedToId || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(todos.id, todoId))
+      .returning()
+
+    // Notify all watchers of the assignment change
+    const assignedUser = assignedToId ? await stackServerApp.getUser(assignedToId) : null
+    const assignmentMessage = assignedToId 
+      ? `Todo assigned to ${assignedUser?.displayName || assignedUser?.primaryEmail || 'someone'}`
+      : 'Todo unassigned'
+
+    await notifyWatchers({
+      taskId: todo.id,
+      message: assignmentMessage,
+      type: "info"
+    })
+
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to update todo assignment:', error)
+    return { error: 'Failed to update todo assignment' }
   }
 }
