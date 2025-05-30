@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { db } from "@/lib/db"
-import { todos, user_metrics, users_sync } from "@/drizzle/schema"
+import { todos, user_metrics, users_sync, comments } from "@/drizzle/schema"
 import { eq, desc, count, isNull } from "drizzle-orm"
 import { getStripePlan } from "@/app/api/stripe/plans"
 import { stackServerApp, getAccessToken } from "@/stack"
@@ -296,5 +296,89 @@ export async function toggleWatchTodo(formData: FormData) {
   } catch (error) {
     console.error('Failed to toggle watch status:', error)
     return { error: 'Failed to update watch status' }
+  }
+}
+
+export async function getComments(todoId: number) {
+  const accessToken = await getAccessToken(await cookies())
+  if (!accessToken) {
+    throw new Error("Not authenticated")
+  }
+
+  try {
+    const commentList = await db.query.comments.findMany({
+      where: eq(comments.todoId, todoId),
+      with: {
+        user: true
+      },
+      orderBy: comments.createdAt
+    })
+    
+    return commentList
+  } catch (error) {
+    console.error("Failed to fetch comments:", error)
+    return []
+  }
+}
+
+export async function addComment(formData: FormData) {
+  const content = formData.get("content") as string
+  const todoId = parseInt(formData.get("todoId") as string)
+
+  if (!content?.trim()) {
+    return { error: "Comment content is required" }
+  }
+
+  if (isNaN(todoId)) {
+    return { error: "Invalid todo ID" }
+  }
+
+  const user = await stackServerApp.getUser()
+  if (!user) {
+    return { error: "User not found" }
+  }
+
+  try {
+    // Ensure user exists in users_sync table
+    await db.insert(users_sync).values({
+      id: user.id,
+      email: user.primaryEmail?.slice(0, 255) || null,
+      name: user.displayName?.slice(0, 255) || null,
+      image: null, // Don't store large base64 images in DB
+    }).onConflictDoUpdate({
+      target: users_sync.id,
+      set: {
+        email: user.primaryEmail?.slice(0, 255) || null,
+        name: user.displayName?.slice(0, 255) || null,
+        image: null, // Don't store large base64 images in DB
+        updated_at: new Date(),
+      }
+    })
+
+    const [comment] = await db.insert(comments).values({
+      content: content.trim(),
+      todoId,
+      userId: user.id,
+    }).returning()
+
+    // Get the todo details for notifications
+    const todo = await db.query.todos.findFirst({
+      where: eq(todos.id, todoId)
+    })
+
+    if (todo) {
+      // Notify all watchers of the new comment
+      await notifyWatchers({
+        taskId: todoId,
+        message: `${user.displayName || user.primaryEmail} commented on "${todo.title}"`,
+        type: "info"
+      })
+    }
+
+    revalidatePath(`/app/todos/${todoId}`)
+    return { success: true }
+  } catch (error) {
+    console.error("Failed to add comment:", error)
+    return { error: "Failed to add comment" }
   }
 }

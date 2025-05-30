@@ -15,6 +15,20 @@
       "when": 1747612527002,
       "tag": "0001_soft_franklin_richards",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1748490483719,
+      "tag": "0002_yielding_leader",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1748567504466,
+      "tag": "0003_skinny_epoch",
+      "breakpoints": true
     }
   ]
 }

@@ -19,19 +19,7 @@ import { useRouter } from 'next/navigation'
 import { CalendarIcon, Trash2 } from 'lucide-react'
 import type { Todo } from '@/drizzle/schema'
 
-export function TodoItemPageClient({
-  todo,
-  todoLimit,
-  userId,
-  email,
-  name,
-}: {
-  todo: Todo
-  todoLimit: number
-  userId: string
-  email: string
-  name: string | null
-}) {
+export function TodoItemPageClient({ todo }: { todo: Todo }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [date, setDate] = useState<Date | undefined>(
