@@ -141,7 +141,7 @@ export function TodoItemPageClient({ todo }: { todo: Todo }) {
                 />
                 <div className="p-2 border-t">
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     className="w-full"
                     onClick={() => handleUpdateDueDate(undefined)}
@@ -154,7 +154,7 @@ export function TodoItemPageClient({ todo }: { todo: Todo }) {
           </div>
 
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={handleDelete}
             disabled={isPending}

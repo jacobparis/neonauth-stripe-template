@@ -8,7 +8,7 @@ export default function TodoItemLoading() {
     <div>
       {/* Back button */}
       <div>
-        <Button variant="ghost" asChild size="sm">
+        <Button variant="outline" asChild size="sm">
           <Link href="/app/todos">
             <ArrowLeft className="h-5 w-5" />
             <span>Back to todos</span>

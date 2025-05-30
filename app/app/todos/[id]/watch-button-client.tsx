@@ -30,11 +30,11 @@ export function WatchButtonClient({
 
   return (
     <Button
-      variant="ghost"
+      variant="outline"
       size="sm"
       onClick={handleToggleWatch}
       disabled={isPending}
-      className={`gap-2 ${
+      className={`flex items-center gap-1.5 ${
         isWatching
           ? 'text-blue-600 hover:text-blue-700 hover:bg-blue-50'
           : 'text-gray-600 hover:text-gray-700 hover:bg-gray-50'
