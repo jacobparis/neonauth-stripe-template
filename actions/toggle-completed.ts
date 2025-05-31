@@ -1,7 +1,7 @@
 "use server"
 
 import { db } from "@/lib/db"
-import { todos } from "@/drizzle/schema"
+import { todos, comments } from "@/drizzle/schema"
 import { eq, inArray, and } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import { publishTask } from "@/app/api/queue/qstash"
@@ -34,6 +34,14 @@ export async function processToggleCompleted(ids: number[], payload: { completed
   const validIds = ids.filter((id) => id > 0)
   if (validIds.length === 0) return
 
+  // Get current todos to check for changes
+  const currentTodos = await db.query.todos.findMany({
+    where: and(
+      inArray(todos.id, validIds),
+      eq(todos.assignedToId, payload.userId)
+    )
+  })
+
   // When called via QStash, use the passed userId 
   const [updatedTodos] = await db
     .update(todos)
@@ -45,6 +53,19 @@ export async function processToggleCompleted(ids: number[], payload: { completed
       )
     )
     .returning()
+
+  // Create activity comments for todos that actually changed
+  for (const currentTodo of currentTodos) {
+    if (currentTodo.completed !== payload.completed) {
+      const completionComment = payload.completed ? "Marked as completed" : "Marked as incomplete"
+
+      await db.insert(comments).values({
+        content: completionComment,
+        todoId: currentTodo.id,
+        userId: payload.userId,
+      })
+    }
+  }
 
   // Create notifications for the completed todos
   if (payload.completed) {

@@ -260,31 +260,58 @@ export async function updateTodo(formData: FormData) {
   }
 
   try {
+    // Get the current todo to compare changes
+    const currentTodo = await db.query.todos.findFirst({
+      where: eq(todos.id, todoId)
+    })
+
+    if (!currentTodo) {
+      throw new Error("Todo not found")
+    }
+
     // Only update fields that are provided
     const updateData: any = {
       updatedAt: new Date(),
     }
     
-    if (title !== null) {
+    const changes: string[] = []
+
+    if (title !== null && title !== currentTodo.title) {
       updateData.title = title as string
+      changes.push(`Title changed to "${title}"`)
     }
     
-    if (description !== null) {
+    if (description !== null && description !== currentTodo.description) {
       updateData.description = description as string
+      if (description) {
+        changes.push(`Description updated`)
+      } else {
+        changes.push(`Description removed`)
+      }
     }
 
-    const [todo] = await db
-      .update(todos)
-      .set(updateData)
-      .where(eq(todos.id, todoId))
-      .returning()
+    if (changes.length > 0) {
+      const [todo] = await db
+        .update(todos)
+        .set(updateData)
+        .where(eq(todos.id, todoId))
+        .returning()
 
-    // Notify all watchers of the update
-    await notifyWatchers({
-      taskId: todo.id,
-      message: `Todo updated: ${todo.title}`,
-      type: "info"
-    })
+      // Add activity comment for the changes
+      const changeComment = changes.join(', ')
+      await db.insert(comments).values({
+        content: changeComment,
+        todoId,
+        userId: user.id,
+      })
+
+      // Notify all watchers of the update
+      await notifyWatchers({
+        taskId: todo.id,
+        message: `Todo updated: ${todo.title}`,
+        type: "info"
+      })
+    }
 
     revalidatePath('/')
   } catch (error) {
@@ -359,6 +386,7 @@ export async function getComments(todoId: number) {
 export async function addComment(formData: FormData) {
   const content = formData.get("content") as string
   const todoId = parseInt(formData.get("todoId") as string)
+  const isAiGenerated = formData.get("isAiGenerated") === "true"
 
   if (!content?.trim()) {
     return { error: "Comment content is required" }
@@ -368,12 +396,39 @@ export async function addComment(formData: FormData) {
     return { error: "Invalid todo ID" }
   }
 
-  const user = await stackServerApp.getUser()
-  if (!user) {
-    return { error: "User not found" }
-  }
+  let userId: string
+  let userName: string | null = null
 
-  try {
+  if (isAiGenerated) {
+    // For AI-generated comments, use a special AI user ID
+    userId = 'ai-assistant'
+    userName = 'AI Assistant'
+    
+    // Ensure AI user exists in users_sync table
+    await db.insert(users_sync).values({
+      id: 'ai-assistant',
+      email: 'ai@assistant.local',
+      name: 'AI Assistant',
+      image: null,
+    }).onConflictDoUpdate({
+      target: users_sync.id,
+      set: {
+        email: 'ai@assistant.local',
+        name: 'AI Assistant',
+        image: null,
+        updated_at: new Date(),
+      }
+    })
+  } else {
+    // For regular comments, use the authenticated user
+    const user = await stackServerApp.getUser()
+    if (!user) {
+      return { error: "User not found" }
+    }
+    
+    userId = user.id
+    userName = user.displayName
+
     // Ensure user exists in users_sync table
     await db.insert(users_sync).values({
       id: user.id,
@@ -389,11 +444,13 @@ export async function addComment(formData: FormData) {
         updated_at: new Date(),
       }
     })
+  }
 
+  try {
     const [comment] = await db.insert(comments).values({
       content: content.trim(),
       todoId,
-      userId: user.id,
+      userId,
     }).returning()
 
     // Get the todo details for notifications
@@ -401,11 +458,12 @@ export async function addComment(formData: FormData) {
       where: eq(todos.id, todoId)
     })
 
-    if (todo) {
-      // Notify all watchers of the new comment
+    if (todo && !isAiGenerated) {
+      // Only notify watchers for human comments, not AI responses
+      // to avoid notification spam
       await notifyWatchers({
         taskId: todoId,
-        message: `${user.displayName || user.primaryEmail} commented on "${todo.title}"`,
+        message: `${userName || 'Someone'} commented on "${todo.title}"`,
         type: "info"
       })
     }
@@ -433,26 +491,48 @@ export async function updateTodoAssignment(formData: FormData) {
   }
 
   try {
-    const [todo] = await db
-      .update(todos)
-      .set({ 
-        assignedToId: assignedToId || null,
-        updatedAt: new Date(),
-      })
-      .where(eq(todos.id, todoId))
-      .returning()
-
-    // Notify all watchers of the assignment change
-    const assignedUser = assignedToId ? await stackServerApp.getUser(assignedToId) : null
-    const assignmentMessage = assignedToId 
-      ? `Todo assigned to ${assignedUser?.displayName || assignedUser?.primaryEmail || 'someone'}`
-      : 'Todo unassigned'
-
-    await notifyWatchers({
-      taskId: todo.id,
-      message: assignmentMessage,
-      type: "info"
+    // Get the current todo to compare changes
+    const currentTodo = await db.query.todos.findFirst({
+      where: eq(todos.id, todoId)
     })
+
+    if (!currentTodo) {
+      throw new Error("Todo not found")
+    }
+
+    // Only update if assignment actually changed
+    if (assignedToId !== currentTodo.assignedToId) {
+      const [todo] = await db
+        .update(todos)
+        .set({ 
+          assignedToId: assignedToId || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(todos.id, todoId))
+        .returning()
+
+      // Add activity comment for the assignment change
+      let assignmentComment: string
+      if (assignedToId) {
+        const assignedUser = await stackServerApp.getUser(assignedToId)
+        assignmentComment = `Assigned to ${assignedUser?.displayName || assignedUser?.primaryEmail || 'someone'}`
+      } else {
+        assignmentComment = 'Unassigned'
+      }
+
+      await db.insert(comments).values({
+        content: assignmentComment,
+        todoId,
+        userId: user.id,
+      })
+
+      // Notify all watchers of the assignment change
+      await notifyWatchers({
+        taskId: todo.id,
+        message: assignmentComment,
+        type: "info"
+      })
+    }
 
     return { success: true }
   } catch (error) {

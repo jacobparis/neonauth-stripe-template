@@ -1,7 +1,7 @@
 "use server"
 
 import { db } from "@/lib/db"
-import { todos } from "@/drizzle/schema"
+import { todos, comments } from "@/drizzle/schema"
 import { eq, inArray, and } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import { publishTask } from "@/app/api/queue/qstash"
@@ -17,6 +17,14 @@ export async function processUpdateDueDate(ids: number[], payload: { dueDate: Da
 
   // When called via QStash, use the passed userId 
   if (payload.userId) {
+    // Get current todos to check for changes
+    const currentTodos = await db.query.todos.findMany({
+      where: and(
+        inArray(todos.id, validIds),
+        eq(todos.assignedToId, payload.userId)
+      )
+    })
+
     const [updatedTodos] = await db
       .update(todos)
       .set({ dueDate: payload.dueDate })
@@ -27,6 +35,24 @@ export async function processUpdateDueDate(ids: number[], payload: { dueDate: Da
         )
       )
       .returning()
+
+    // Create activity comments for todos that actually changed
+    for (const currentTodo of currentTodos) {
+      const currentDueDateStr = currentTodo.dueDate?.toDateString()
+      const newDueDateStr = payload.dueDate?.toDateString()
+      
+      if (currentDueDateStr !== newDueDateStr) {
+        const dueDateComment = payload.dueDate 
+          ? `Due date set to ${payload.dueDate.toLocaleDateString()}`
+          : "Due date removed"
+
+        await db.insert(comments).values({
+          content: dueDateComment,
+          todoId: currentTodo.id,
+          userId: payload.userId,
+        })
+      }
+    }
 
     // Create notifications for the updated todos
     await Promise.all(
@@ -48,6 +74,14 @@ export async function processUpdateDueDate(ids: number[], payload: { dueDate: Da
       throw new Error("Not authenticated")
     }
     
+    // Get current todos to check for changes
+    const currentTodos = await db.query.todos.findMany({
+      where: and(
+        inArray(todos.id, validIds),
+        eq(todos.assignedToId, user.id)
+      )
+    })
+
     const [updatedTodos] = await db
       .update(todos)
       .set({ dueDate: payload.dueDate })
@@ -58,6 +92,24 @@ export async function processUpdateDueDate(ids: number[], payload: { dueDate: Da
         )
       )
       .returning()
+
+    // Create activity comments for todos that actually changed
+    for (const currentTodo of currentTodos) {
+      const currentDueDateStr = currentTodo.dueDate?.toDateString()
+      const newDueDateStr = payload.dueDate?.toDateString()
+      
+      if (currentDueDateStr !== newDueDateStr) {
+        const dueDateComment = payload.dueDate 
+          ? `Due date set to ${payload.dueDate.toLocaleDateString()}`
+          : "Due date removed"
+
+        await db.insert(comments).values({
+          content: dueDateComment,
+          todoId: currentTodo.id,
+          userId: user.id,
+        })
+      }
+    }
 
     // Create notifications for the updated todos
     await Promise.all(

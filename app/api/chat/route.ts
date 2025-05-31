@@ -3,6 +3,8 @@ import { NextRequest } from 'next/server'
 import { stackServerApp } from '@/stack'
 import { myProvider } from '@/lib/ai/providers'
 import { systemPrompt } from '@/lib/ai/prompts'
+import { getTodo, getUsersWithProfiles } from '@/lib/actions'
+import { format } from 'date-fns'
 import { 
   updateTodoTitle, 
   updateTodoDescription, 
@@ -22,29 +24,59 @@ export async function POST(req: NextRequest) {
       return new Response('Unauthorized', { status: 401 })
     }
 
-    // Enhanced system prompt with todo context and capabilities
+    // Fetch full todo details and users for richer context
+    const [todo, users] = await Promise.all([
+      getTodo(todoId),
+      getUsersWithProfiles(),
+    ])
+
+    if (!todo) {
+      return new Response('Todo not found', { status: 404 })
+    }
+
+    // Find assigned user details
+    const assignedUser = todo.assignedToId 
+      ? users.find(u => u.id === todo.assignedToId)
+      : null
+
+    // Format due date
+    const dueDateStr = todo.dueDate 
+      ? format(new Date(todo.dueDate), 'PPP')
+      : 'No due date set'
+
+    // Enhanced system prompt with full todo context
     const todoSystemPrompt = `${systemPrompt()}
 
-Current Todo Context:
-- Todo ID: ${todoId}
-- Title: "${todoContext.title}"
-- Description: ${todoContext.description || 'No description'}
+CURRENT TODO DETAILS:
+- ID: ${todoId}
+- Title: "${todo.title}"
+- Description: ${todo.description || 'No description'}
+- Status: ${todo.completed ? 'COMPLETED ✅' : 'In Progress 🔄'}
+- Due Date: ${dueDateStr}
+- Assigned To: ${assignedUser ? `${assignedUser.name || assignedUser.email} (${assignedUser.id})` : 'Unassigned'}
+- Created: ${format(new Date(todo.createdAt), 'PPP')}
+- Last Updated: ${format(new Date(todo.updatedAt), 'PPP')}
 
-You can help users manage this specific todo by:
-1. Updating the title or description
-2. Setting or changing due dates
-3. Marking as complete/incomplete
-4. Assigning to users
-5. Providing productivity advice
+AVAILABLE TEAM MEMBERS:
+${users.map(u => `- ${u.name || u.email} (ID: ${u.id})`).join('\n')}
 
-When users ask you to make changes to the todo, use the appropriate tools to actually modify it.
-Be conversational and helpful - act like a smart assistant that can both chat and take action.
+CAPABILITIES:
+You have full context of this todo and its history. You can:
+1. Update title or description
+2. Set, change, or clear due dates
+3. Mark as complete/incomplete
+4. Assign to team members
+5. Provide productivity advice and suggestions
+6. Answer questions about the task
 
-Example interactions:
-- "Change the title to 'X'" → Use updateTodoTitle
-- "Mark this as done" → Use toggleTodoCompletion
-- "Set due date to next Friday" → Use updateTodoDueDate
-- "This needs more details" → Ask what to add, then use updateTodoDescription
+INSTRUCTIONS:
+- Be proactive in suggesting improvements
+- When users ask for changes, use the appropriate tools immediately
+- Reference the current state when providing context
+- Be conversational and helpful
+- If assigning to users, use their exact ID from the team members list above
+
+The conversation history below includes previous comments and activity related to this todo.
 `
 
     const result = streamText({
