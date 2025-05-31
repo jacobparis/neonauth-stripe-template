@@ -10,6 +10,7 @@ import { useChat } from '@ai-sdk/react'
 import { Bot, Send, Sparkles } from 'lucide-react'
 import type { Comment } from '@/drizzle/schema'
 import { useTodoState } from './todo-state-context'
+import { MessageReasoning } from '@/components/message-reasoning'
 
 type CommentWithUser = Comment & {
   user: {
@@ -55,6 +56,8 @@ export function ActivityChat({
 }) {
   const [isPending, startTransition] = useTransition()
   const [inputValue, setInputValue] = useState('')
+  const [isAiThinking, setIsAiThinking] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Get state handlers from context
   const stateHandlers = useTodoState()
@@ -90,6 +93,37 @@ export function ActivityChat({
     }
   }
 
+  // Helper function to add AI reasoning activity comment
+  const addAiReasoningComment = async (reasoning: string) => {
+    try {
+      const formData = new FormData()
+      formData.append('content', `<thinking>${reasoning}</thinking>`)
+      formData.append('todoId', todoId.toString())
+      formData.append('isAiGenerated', 'true')
+
+      // Add optimistically to the comments list
+      const optimisticComment: CommentWithUser = {
+        id: Date.now() + Math.random(), // Ensure unique ID
+        content: `<thinking>${reasoning}</thinking>`,
+        todoId,
+        userId: 'ai-assistant',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        user: {
+          id: 'ai-assistant',
+          email: 'ai@assistant.local',
+          name: 'AI Assistant',
+          image: null,
+        },
+      }
+
+      addOptimisticComment(optimisticComment)
+      await addComment(formData)
+    } catch (error) {
+      console.error('Failed to save AI reasoning comment:', error)
+    }
+  }
+
   const [optimisticComments, addOptimisticComment] = useOptimistic(
     initialComments,
     (state, newComment: CommentWithUser) => [...state, newComment],
@@ -110,18 +144,15 @@ export function ActivityChat({
         title: todo.title,
         description: todo.description,
       },
-    },
-    initialMessages: [
-      // Convert comments to chat messages for context
-      ...optimisticComments.map((comment) => ({
-        id: `comment-${comment.id}`,
-        role: 'user' as const,
-        content: `[Comment by ${
-          comment.user?.name || comment.user?.email || 'User'
-        }]: ${comment.content}`,
-        createdAt: comment.createdAt,
+      // Provide previous comments as context, not as instructions
+      previousActivity: optimisticComments.map((comment) => ({
+        user: comment.user?.name || comment.user?.email || 'User',
+        content: comment.content,
+        createdAt: comment.createdAt.toISOString(),
+        isAiGenerated: comment.userId === 'ai-assistant',
       })),
-    ],
+    },
+    // Remove initialMessages to avoid treating previous comments as current instructions
     onError: (error) => {
       console.error('Chat error:', error)
     },
@@ -132,7 +163,7 @@ export function ActivityChat({
           const titleArgs = toolCall.args as { todoId: number; title: string }
           stateHandlers.setTitle(titleArgs.title)
           // Add activity comment for AI title change
-          addAiActivityComment(`🤖 Title changed to "${titleArgs.title}"`)
+          addAiActivityComment(`Title changed to "${titleArgs.title}"`)
           break
         case 'updateTodoDescription':
           const descArgs = toolCall.args as {
@@ -142,9 +173,9 @@ export function ActivityChat({
           stateHandlers.setDescription(descArgs.description)
           // Add activity comment for AI description change
           if (descArgs.description) {
-            addAiActivityComment(`🤖 Description updated`)
+            addAiActivityComment(`Description updated`)
           } else {
-            addAiActivityComment(`🤖 Description removed`)
+            addAiActivityComment(`Description removed`)
           }
           break
         case 'updateTodoDueDate':
@@ -155,8 +186,8 @@ export function ActivityChat({
           stateHandlers.setDate(dueDate)
           // Add activity comment for AI due date change
           const dueDateComment = dueDate
-            ? `🤖 Due date set to ${dueDate.toLocaleDateString()}`
-            : `🤖 Due date removed`
+            ? `Due date set to ${dueDate.toLocaleDateString()}`
+            : `Due date removed`
           addAiActivityComment(dueDateComment)
           break
         case 'toggleTodoCompletion':
@@ -175,8 +206,8 @@ export function ActivityChat({
           }
           // Add activity comment for AI completion change
           const completionComment = newCompletedState
-            ? `🤖 Marked as completed`
-            : `🤖 Marked as incomplete`
+            ? `Marked as completed`
+            : `Marked as incomplete`
           addAiActivityComment(completionComment)
           break
         case 'assignTodo':
@@ -186,40 +217,50 @@ export function ActivityChat({
           stateHandlers.setAssignedUserId(userId)
           // Add activity comment for AI assignment change
           if (userId) {
-            addAiActivityComment(`🤖 Assigned to user`)
+            addAiActivityComment(`Assigned to user`)
           } else {
-            addAiActivityComment(`🤖 Unassigned`)
+            addAiActivityComment(`Unassigned`)
           }
           break
       }
     },
     onFinish: async (message) => {
-      // Save AI assistant message as a comment following ai-chatbot patterns
+      // Handle AI assistant message completion
       if (message.role === 'assistant' && message.content) {
         try {
-          const formData = new FormData()
-          formData.append('content', `🤖 ${message.content}`)
-          formData.append('todoId', todoId.toString())
-          formData.append('isAiGenerated', 'true')
+          const { thinking, mainContent } = extractThinking(message.content)
 
-          // Add optimistically to the comments list
-          const optimisticComment: CommentWithUser = {
-            id: Date.now(),
-            content: `🤖 ${message.content}`,
-            todoId,
-            userId: 'ai-assistant',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-            user: {
-              id: 'ai-assistant',
-              email: 'ai@assistant.local',
-              name: 'AI Assistant',
-              image: null,
-            },
+          // Create separate activity entries for reasoning and response
+          if (thinking) {
+            await addAiReasoningComment(thinking)
           }
 
-          addOptimisticComment(optimisticComment)
-          await addComment(formData)
+          // If there's main content beyond just tool calls, save it as a regular comment
+          if (mainContent && mainContent.trim()) {
+            const formData = new FormData()
+            formData.append('content', mainContent)
+            formData.append('todoId', todoId.toString())
+            formData.append('isAiGenerated', 'true')
+
+            // Add optimistically to the comments list
+            const optimisticComment: CommentWithUser = {
+              id: Date.now(),
+              content: mainContent,
+              todoId,
+              userId: 'ai-assistant',
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              user: {
+                id: 'ai-assistant',
+                email: 'ai@assistant.local',
+                name: 'AI Assistant',
+                image: null,
+              },
+            }
+
+            addOptimisticComment(optimisticComment)
+            await addComment(formData)
+          }
         } catch (error) {
           console.error('Failed to save AI message as comment:', error)
         }
@@ -239,17 +280,38 @@ export function ActivityChat({
       'Unassigned',
       'Marked as completed',
       'Marked as incomplete',
-      '🤖 Title changed to',
-      '🤖 Description updated',
-      '🤖 Description removed',
-      '🤖 Due date set to',
-      '🤖 Due date removed',
-      '🤖 Assigned to',
-      '🤖 Unassigned',
-      '🤖 Marked as completed',
-      '🤖 Marked as incomplete',
+      '<thinking>', // XML reasoning entries
     ]
     return activityPatterns.some((pattern) => content.includes(pattern))
+  }
+
+  // Helper function to determine if a comment is AI reasoning
+  const isReasoningLog = (content: string) => {
+    return content.includes('<thinking>')
+  }
+
+  // Helper function to extract thinking content from AI messages
+  const extractThinking = (content: string) => {
+    const thinkingStart = content.indexOf('<thinking>')
+    const thinkingEnd = content.indexOf('</thinking>')
+
+    if (
+      thinkingStart !== -1 &&
+      thinkingEnd !== -1 &&
+      thinkingEnd > thinkingStart
+    ) {
+      const thinking = content
+        .substring(thinkingStart + '<thinking>'.length, thinkingEnd)
+        .trim()
+      const beforeThinking = content.substring(0, thinkingStart)
+      const afterThinking = content.substring(
+        thinkingEnd + '</thinking>'.length,
+      )
+      const mainContent = (beforeThinking + afterThinking).trim()
+
+      return { thinking, mainContent }
+    }
+    return { thinking: null, mainContent: content }
   }
 
   // Display only persisted comments (including AI-generated ones)
@@ -268,40 +330,46 @@ export function ActivityChat({
   ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
 
   const handleSubmit = async () => {
-    if (!inputValue.trim()) return
+    if (!inputValue.trim() || isSubmitting) return
 
-    // First, save the user message as a comment (following ai-chatbot pattern)
-    const userFormData = new FormData()
-    userFormData.append('content', inputValue.trim())
-    userFormData.append('todoId', todoId.toString())
+    setIsSubmitting(true)
 
-    // Add optimistic user comment
-    const optimisticUserComment: CommentWithUser = {
-      id: Date.now(),
-      content: inputValue.trim(),
-      todoId,
-      userId: user.id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      user: {
-        id: user.id,
-        email: user.primaryEmail || null,
-        name: user.displayName || null,
-        image: null,
-      },
+    try {
+      // First, save the user message as a comment (following ai-chatbot pattern)
+      const userFormData = new FormData()
+      userFormData.append('content', inputValue.trim())
+      userFormData.append('todoId', todoId.toString())
+
+      // Add optimistic user comment
+      const optimisticUserComment: CommentWithUser = {
+        id: Date.now(),
+        content: inputValue.trim(),
+        todoId,
+        userId: user.id,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        user: {
+          id: user.id,
+          email: user.primaryEmail || null,
+          name: user.displayName || null,
+          image: null,
+        },
+      }
+
+      addOptimisticComment(optimisticUserComment)
+
+      // Save user comment to database
+      await addComment(userFormData)
+
+      // Then send to AI for response
+      await append({
+        role: 'user',
+        content: inputValue.trim(),
+      })
+      setInputValue('')
+    } finally {
+      setIsSubmitting(false)
     }
-
-    addOptimisticComment(optimisticUserComment)
-
-    // Save user comment to database
-    await addComment(userFormData)
-
-    // Then send to AI for response
-    await append({
-      role: 'user',
-      content: inputValue.trim(),
-    })
-    setInputValue('')
   }
 
   const shouldShowHeader = (message: ActivityMessage, index: number) => {
@@ -339,11 +407,39 @@ export function ActivityChat({
                 ? 'AI Assistant'
                 : message.user?.name || message.user?.email || 'Someone'
 
+            // Handle reasoning entries differently
+            if (isReasoningLog(message.content)) {
+              const { thinking } = extractThinking(message.content)
+              const reasoningContent = thinking || message.content
+
+              return (
+                <div
+                  key={message.id}
+                  className="flex items-start gap-3 py-1 px-2 text-sm"
+                >
+                  <Avatar className="h-6 w-6 ring-1 ring-gray-200 shadow-sm">
+                    <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                      <Bot className="h-3 w-3 text-white" />
+                    </div>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs text-gray-400">
+                        {format(new Date(message.createdAt), 'MMM d, h:mm a')}
+                      </span>
+                    </div>
+                    <MessageReasoning
+                      isLoading={false}
+                      reasoning={reasoningContent}
+                    />
+                  </div>
+                </div>
+              )
+            }
+
+            // Handle regular activity entries
             // Clean up the content for activity display
             let cleanContent = message.content
-            if (cleanContent.startsWith('🤖 ')) {
-              cleanContent = cleanContent.substring(2) // Remove emoji prefix
-            }
 
             return (
               <div
@@ -439,17 +535,63 @@ export function ActivityChat({
                 )}
                 <div
                   className={`text-sm whitespace-pre-wrap ${
-                    message.type === 'ai'
-                      ? 'bg-blue-50 p-3 rounded-lg text-gray-800 border border-blue-100'
-                      : 'text-gray-700'
+                    message.type === 'ai' ? 'text-gray-700' : 'text-gray-700'
                   }`}
                 >
-                  {message.content}
+                  {message.type === 'ai'
+                    ? (() => {
+                        const { thinking, mainContent } = extractThinking(
+                          message.content,
+                        )
+                        return (
+                          <>
+                            {thinking && (
+                              <MessageReasoning
+                                isLoading={false}
+                                reasoning={thinking}
+                              />
+                            )}
+                            {mainContent && (
+                              <div className={thinking ? 'mt-3' : ''}>
+                                {mainContent}
+                              </div>
+                            )}
+                          </>
+                        )
+                      })()
+                    : message.content}
                 </div>
               </div>
             </div>
           )
         })}
+
+        {/* Show AI thinking state */}
+        {isAiLoading && (
+          <div className="flex gap-3 group">
+            <div className="flex flex-col items-center">
+              <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm">
+                <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  <Bot className="h-4 w-4 text-white" />
+                </div>
+              </Avatar>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-sm font-medium text-gray-900">
+                  <span className="flex items-center gap-1">
+                    <Bot className="h-3 w-3" />
+                    AI Assistant
+                  </span>
+                </span>
+                <span className="text-xs text-gray-500">now</span>
+              </div>
+              <div className="text-sm text-gray-700">
+                <MessageReasoning isLoading={true} reasoning="" />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Unified Input */}
@@ -479,7 +621,7 @@ export function ActivityChat({
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder="Ask the AI assistant anything about this task..."
                 className="min-h-[80px] resize-none pr-10"
-                disabled={isPending || isAiLoading}
+                disabled={isPending || isAiLoading || isSubmitting}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                     e.preventDefault()
@@ -493,7 +635,9 @@ export function ActivityChat({
             </div>
             <Button
               onClick={handleSubmit}
-              disabled={!inputValue.trim() || isPending || isAiLoading}
+              disabled={
+                !inputValue.trim() || isPending || isAiLoading || isSubmitting
+              }
               size="sm"
               className="self-end"
             >
