@@ -9,6 +9,7 @@ import { addComment } from '@/lib/actions'
 import { useChat } from '@ai-sdk/react'
 import { Bot, Send, Sparkles } from 'lucide-react'
 import type { Comment } from '@/drizzle/schema'
+import { useTodoState } from './todo-state-context'
 
 type CommentWithUser = Comment & {
   user: {
@@ -55,6 +56,9 @@ export function ActivityChat({
   const [isPending, startTransition] = useTransition()
   const [inputValue, setInputValue] = useState('')
 
+  // Get state handlers from context
+  const stateHandlers = useTodoState()
+
   const [optimisticComments, addOptimisticComment] = useOptimistic(
     initialComments,
     (state, newComment: CommentWithUser) => [...state, newComment],
@@ -78,6 +82,47 @@ export function ActivityChat({
     },
     onError: (error) => {
       console.error('Chat error:', error)
+    },
+    onToolCall: ({ toolCall }) => {
+      // Handle tool calls to trigger immediate state updates
+      switch (toolCall.toolName) {
+        case 'updateTodoTitle':
+          const titleArgs = toolCall.args as { todoId: number; title: string }
+          stateHandlers.setTitle(titleArgs.title)
+          break
+        case 'updateTodoDescription':
+          const descArgs = toolCall.args as {
+            todoId: number
+            description: string
+          }
+          stateHandlers.setDescription(descArgs.description)
+          break
+        case 'updateTodoDueDate':
+          const dateArgs = toolCall.args as { todoId: number; dueDate?: string }
+          const dueDate = dateArgs.dueDate
+            ? new Date(dateArgs.dueDate)
+            : undefined
+          stateHandlers.setDate(dueDate)
+          break
+        case 'toggleTodoCompletion':
+          const completionArgs = toolCall.args as {
+            todoId: number
+            completed?: boolean
+          }
+          if (completionArgs.completed !== undefined) {
+            stateHandlers.setCompleted(completionArgs.completed)
+          } else {
+            // If no specific status provided, toggle current state
+            stateHandlers.setCompleted(!stateHandlers.completed)
+          }
+          break
+        case 'assignTodo':
+          const assignArgs = toolCall.args as { todoId: number; userId: string }
+          const userId =
+            assignArgs.userId === 'unassign' ? null : assignArgs.userId
+          stateHandlers.setAssignedUserId(userId)
+          break
+      }
     },
   })
 

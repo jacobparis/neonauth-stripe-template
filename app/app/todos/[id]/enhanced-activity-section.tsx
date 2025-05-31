@@ -1,9 +1,11 @@
 import { stackServerApp } from '@/stack'
 import { getComments } from '@/lib/actions'
 import { ActivityChat } from './activity-chat'
+import type { TodoStateHandlers } from './page-client'
 
 export async function EnhancedActivitySection({
   todo,
+  stateHandlers,
 }: {
   todo: {
     id: number
@@ -12,6 +14,7 @@ export async function EnhancedActivitySection({
     createdAt: Date
     updatedAt: Date
   }
+  stateHandlers?: TodoStateHandlers
 }) {
   try {
     const user = await stackServerApp.getUser({ or: 'redirect' })
@@ -31,6 +34,7 @@ export async function EnhancedActivitySection({
           title: todo.title,
           description: todo.description,
         }}
+        stateHandlers={stateHandlers}
       />
     )
   } catch (error) {

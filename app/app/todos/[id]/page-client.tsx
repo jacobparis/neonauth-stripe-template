@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useEffect, useRef } from 'react'
+import { useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -19,6 +19,7 @@ import { useRouter } from 'next/navigation'
 import { CalendarIcon, Trash2, UserIcon } from 'lucide-react'
 import type { Todo, User } from '@/drizzle/schema'
 import { UserSelector } from '../user-selector'
+import { useTodoState } from './todo-state-context'
 
 // Extend User type to include profileImageUrl from Stack Auth
 type UserWithProfile = User & {
@@ -34,68 +35,31 @@ export function TodoItemPageClient({
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [date, setDate] = useState<Date | undefined>(
-    todo.dueDate ? new Date(todo.dueDate) : undefined,
-  )
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
-  const [title, setTitle] = useState(todo.title)
-  const [description, setDescription] = useState(todo.description || '')
-  const [assignedUserId, setAssignedUserId] = useState<string | null>(
-    todo.assignedToId,
-  )
+
+  // Get state from context
+  const {
+    date,
+    title,
+    setTitle,
+    description,
+    setDescription,
+    assignedUserId,
+    completed,
+    handleUpdateDueDate: contextHandleUpdateDueDate,
+    handleUpdateAssignment,
+    handleToggleCompleted,
+  } = useTodoState()
+
+  const handleUpdateDueDate = (newDate: Date | undefined) => {
+    contextHandleUpdateDueDate(newDate)
+    setIsCalendarOpen(false)
+  }
 
   const handleDelete = () => {
     startTransition(async () => {
       await deleteTodo(todo.id)
       router.push('/app/todos')
-    })
-  }
-
-  const handleToggleCompleted = () => {
-    startTransition(async () => {
-      const formData = new FormData()
-      formData.append('id', todo.id.toString())
-      formData.append('completed', (!todo.completed).toString())
-      await toggleTodoCompleted(formData)
-    })
-  }
-
-  const handleUpdateDueDate = (newDate: Date | undefined) => {
-    startTransition(async () => {
-      const formData = new FormData()
-      formData.append('id', todo.id.toString())
-      formData.append('dueDate', newDate?.toISOString() || '')
-      await updateDueDate(formData)
-    })
-    setDate(newDate)
-    setIsCalendarOpen(false)
-  }
-
-  const handleUpdateAssignment = (userId: string | null) => {
-    const previousAssignedUserId = assignedUserId
-
-    // Optimistic update
-    setAssignedUserId(userId)
-
-    startTransition(async () => {
-      try {
-        const formData = new FormData()
-        formData.append('id', todo.id.toString())
-        if (userId) {
-          formData.append('assignedToId', userId)
-        }
-        const result = await updateTodoAssignment(formData)
-
-        if (result?.error) {
-          // Revert optimistic update on error
-          setAssignedUserId(previousAssignedUserId)
-          console.error('Failed to update assignment:', result.error)
-        }
-      } catch (error) {
-        // Revert optimistic update on error
-        setAssignedUserId(previousAssignedUserId)
-        console.error('Failed to update assignment:', error)
-      }
     })
   }
 
@@ -136,12 +100,12 @@ export function TodoItemPageClient({
                 size="sm"
                 onClick={handleToggleCompleted}
                 className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-                  todo.completed
+                  completed
                     ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
                     : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
                 }`}
               >
-                {todo.completed ? 'Completed' : 'Done'}
+                {completed ? 'Completed' : 'Done'}
               </Button>
 
               <div className="flex items-center gap-2">

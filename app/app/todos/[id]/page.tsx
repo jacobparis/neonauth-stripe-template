@@ -1,4 +1,3 @@
-import { TodoItemPageClient } from './page-client'
 import { getTodo, getUsersWithProfiles } from '@/lib/actions'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
@@ -7,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 
-// Import the enhanced activity section with AI chat
+import { TodoStateProvider } from './todo-state-context'
+import { TodoItemPageClient } from './page-client'
 import { WatchButton } from './watch-button'
 import { EnhancedActivitySection } from './enhanced-activity-section'
 import { ActivitySection } from '@/app/app/todos/[id]/activity-section'
@@ -46,32 +46,36 @@ export default async function TodoItemPage({
           </Button>
         </div>
 
-        <TodoItemPageClient todo={todo} users={users} />
+        <TodoStateProvider todo={todo}>
+          <TodoItemPageClient todo={todo} users={users} />
 
-        {/* Activity Section */}
-        <div className="px-6 mt-16">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-900 tracking-wide uppercase">
-              Activity
-            </h3>
+          {/* Activity Section */}
+          <div className="px-6 mt-16">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-900 tracking-wide uppercase">
+                Activity
+              </h3>
 
-            <WatchButton todoId={todo.id} />
+              <WatchButton todoId={todo.id} />
+            </div>
+
+            <div className="mt-6">
+              <ActivitySection todo={todo} />
+            </div>
+
+            <div className="mt-6">
+              <Suspense
+                fallback={
+                  <div className="text-sm text-gray-500">
+                    Loading activity...
+                  </div>
+                }
+              >
+                <EnhancedActivitySection todo={todo} />
+              </Suspense>
+            </div>
           </div>
-
-          <div className="mt-6">
-            <ActivitySection todo={todo} />
-          </div>
-
-          <div className="mt-6">
-            <Suspense
-              fallback={
-                <div className="text-sm text-gray-500">Loading activity...</div>
-              }
-            >
-              <EnhancedActivitySection todo={todo} />
-            </Suspense>
-          </div>
-        </div>
+        </TodoStateProvider>
       </div>
     )
   } catch (error) {
