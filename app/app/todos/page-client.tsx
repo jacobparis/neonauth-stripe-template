@@ -30,17 +30,6 @@ import {
 import { Calendar } from '@/components/ui/calendar'
 import { format } from 'date-fns'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog'
-import { Progress } from '@/components/ui/progress'
-import { groupTodosByDueDate } from './utils'
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -49,6 +38,9 @@ import {
 import Link from 'next/link'
 import { UserSelector } from './user-selector'
 import { UserAvatar } from './user-avatar'
+import { Progress } from '@/components/ui/progress'
+import { groupTodosByDueDate } from './utils'
+import { Textarea } from '@/components/ui/textarea'
 
 // Extend User type to include profileImageUrl from Stack Auth
 type UserWithProfile = User & {
@@ -122,75 +114,99 @@ function AddTodoForm({
   }
 
   return (
-    <form action={handleAction} className="space-y-4">
-      <div className="space-y-2">
-        <label htmlFor="todo-text" className="text-sm font-medium">
-          Task
-        </label>
-        <Input
-          id="todo-text"
-          type="text"
+    <div className="relative w-full flex flex-col gap-4">
+      <form action={handleAction} className="relative">
+        <Textarea
           name="text"
           placeholder="What needs to be done?"
-          required
           value={todoText}
           onChange={(e) => setTodoText(e.target.value)}
+          className="min-h-[24px] max-h-[calc(75dvh)] resize-none rounded-2xl !text-base bg-muted pb-20 dark:border-zinc-700"
+          rows={2}
           autoFocus
+          onKeyDown={(event) => {
+            if (
+              event.key === 'Enter' &&
+              !event.shiftKey &&
+              !event.nativeEvent.isComposing
+            ) {
+              event.preventDefault()
+              if (todoText.trim()) {
+                const formData = new FormData()
+                formData.append('text', todoText)
+                if (selectedDueDate) {
+                  formData.append('dueDate', selectedDueDate.toISOString())
+                }
+                if (selectedUserId) {
+                  formData.append('assignedToId', selectedUserId)
+                }
+                handleAction(formData)
+              }
+            }
+          }}
         />
-      </div>
 
-      <div className="space-y-2">
-        <label className="text-sm font-medium">Assign to</label>
-        <UserSelector
-          users={users}
-          selectedUserId={selectedUserId}
-          onSelectUser={setSelectedUserId}
-          triggerClassName="w-full justify-start"
-        />
-      </div>
+        {/* Assignment and Date Controls */}
+        <div className="absolute bottom-0 left-0 p-2 flex items-center gap-2">
+          <UserSelector
+            users={users}
+            selectedUserId={selectedUserId}
+            onSelectUser={setSelectedUserId}
+            triggerClassName="h-8 px-2 text-xs"
+          />
 
-      <div className="flex items-center gap-2">
-        <Popover modal open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-          <PopoverTrigger asChild>
-            <Button type="button" variant="outline" size="sm">
-              <CalendarIcon className="h-4 w-4 mr-2" />
-              {selectedDueDate
-                ? format(selectedDueDate, 'PPP')
-                : 'Select a date'}
+          <Popover modal open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs"
+              >
+                <CalendarIcon className="h-3 w-3 mr-1" />
+                {selectedDueDate
+                  ? format(selectedDueDate, 'MMM d')
+                  : 'Due date'}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedDueDate}
+                onSelect={(date) => {
+                  setSelectedDueDate(date)
+                  setIsCalendarOpen(false)
+                }}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+
+          {selectedDueDate && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedDueDate(undefined)}
+              className="h-8 px-1"
+            >
+              <X className="h-3 w-3" />
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={selectedDueDate}
-              onSelect={(date) => {
-                setSelectedDueDate(date)
-                setIsCalendarOpen(false)
-              }}
-              initialFocus
-            />
-          </PopoverContent>
-        </Popover>
+          )}
+        </div>
 
-        {selectedDueDate && (
+        {/* Submit Button */}
+        <div className="absolute bottom-0 right-0 p-2">
           <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setSelectedDueDate(undefined)}
-            className="h-8 px-2"
+            type="submit"
+            className="rounded-full p-1.5 h-fit border dark:border-zinc-600"
+            disabled={!todoText.trim()}
           >
-            <X className="h-4 w-4" />
-            <span className="sr-only">Clear date</span>
+            <Plus className="h-4 w-4" />
           </Button>
-        )}
-      </div>
-
-      <Button type="submit">
-        <Plus className="h-4 w-4 mr-2" />
-        Add todo
-      </Button>
-    </form>
+        </div>
+      </form>
+    </div>
   )
 }
 
@@ -227,12 +243,27 @@ const TodoItem = memo(function TodoItem({
             onCheckedChange={(checked: boolean) =>
               onToggleSelect(todo.id, checked)
             }
-            className={`data-[state=checked]:bg-blue-600 data-[state=checked]:text-white data-[state=checked]:border-blue-600 ${
+            className={`data-[state=checked]:bg-muted0 data-[state=checked]:text-white data-[state=checked]:border-muted0 ${
               isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
             } transition-opacity`}
             aria-label="Select todo for bulk actions"
           />
         </div>
+
+        {assignedUser ? (
+          <UserAvatar
+            user={{
+              name: assignedUser.name,
+              avatarUrl: assignedUser.profileImageUrl,
+            }}
+            showName={false}
+            className="text-xs"
+          />
+        ) : (
+          <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
+            <span className="text-xs text-muted-foreground">?</span>
+          </div>
+        )}
 
         <div className="min-w-0">
           <Link
@@ -248,18 +279,7 @@ const TodoItem = memo(function TodoItem({
       </div>
 
       <div className="flex items-center">
-        {assignedUser ? (
-          <UserAvatar
-            user={{
-              name: assignedUser.name,
-              avatarUrl: assignedUser.profileImageUrl,
-            }}
-            showName={false}
-            className="text-xs"
-          />
-        ) : (
-          <span className="text-xs text-muted-foreground">Unassigned</span>
-        )}
+        {/* Empty middle column since assignee moved to first column */}
       </div>
 
       <div className="flex items-center gap-2 justify-end -mr-2">
@@ -336,9 +356,27 @@ export function TodosPageClient({
   const displayedTodos = useMemo(() => {
     let current = [...todos]
 
+    // Filter out optimistic todos that now have real counterparts from the server
+    const optimisticTodos = pendingEdits
+      .filter((edit) => edit.type === 'add')
+      .map((edit) => (edit as { type: 'add'; todo: Todo }).todo)
+
+    const validOptimisticTodos = optimisticTodos.filter((optimisticTodo) => {
+      // Remove optimistic todo if a real todo with the same title and assignment exists
+      return !current.some(
+        (realTodo) =>
+          realTodo.title === optimisticTodo.title &&
+          realTodo.assignedToId === optimisticTodo.assignedToId &&
+          realTodo.id > 0, // Real todos have positive IDs
+      )
+    })
+
     for (const edit of pendingEdits) {
       if (edit.type === 'add') {
-        current = [...current, edit.todo]
+        // Only add optimistic todos that don't have real counterparts
+        if (validOptimisticTodos.includes(edit.todo)) {
+          current = [...current, edit.todo]
+        }
       } else {
         current = current
           .map((todo) => {
@@ -534,101 +572,12 @@ export function TodosPageClient({
             className="pl-8 h-8"
           />
         </div>
-
-        <Dialog modal open={isAddTodoOpen} onOpenChange={setIsAddTodoOpen}>
-          <DialogTrigger asChild>
-            {displayedTodos.length >= todoLimit ? (
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-red-500 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-950 gap-2"
-              >
-                <Zap className="h-4 w-4" />
-                Upgrade to Pro to add more
-              </Button>
-            ) : (
-              <Button size="sm">New deadline</Button>
-            )}
-          </DialogTrigger>
-          <DialogContent>
-            {displayedTodos.length >= todoLimit ? (
-              <>
-                <DialogHeader>
-                  <DialogTitle>Todo Limit Reached</DialogTitle>
-                  <DialogDescription>
-                    You&apos;ve reached your limit of {todoLimit} active todos.
-                    Delete some todos or upgrade to Pro for a higher limit.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="py-6">
-                  <div className="rounded-lg border p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-primary/10 p-2 rounded-full">
-                        <Zap className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">Pro Plan Benefits</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Higher todo limits and advanced features
-                        </p>
-                      </div>
-                    </div>
-                    <ul className="grid gap-2 mt-4 text-sm">
-                      <li className="flex items-center gap-2">
-                        <Zap className="h-4 w-4 text-primary" />
-                        <span>Up to {1000} active todos</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <CalendarIcon className="h-4 w-4 text-primary" />
-                        <span>Full date range for planning</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    onClick={async () => {
-                      setIsLoading(true)
-                      try {
-                        await redirectToCheckout({
-                          userId,
-                          email,
-                          name,
-                        })
-                      } catch (error) {
-                        console.error('Error redirecting to checkout:', error)
-                        setIsLoading(false)
-                      }
-                    }}
-                    className="w-full gap-2"
-                    disabled={isLoading}
-                  >
-                    <CreditCard className="h-4 w-4" />
-                    {isLoading ? 'Redirecting...' : 'Upgrade to Pro'}
-                  </Button>
-                </DialogFooter>
-              </>
-            ) : (
-              <>
-                <DialogHeader>
-                  <DialogTitle>Add New Todo</DialogTitle>
-                </DialogHeader>
-                <AddTodoForm
-                  onClose={() => setIsAddTodoOpen(false)}
-                  setPendingEdits={setPendingEdits}
-                  users={users}
-                  currentUserId={userId}
-                />
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
       </div>
 
       {/* Todo list */}
-      <div className="border rounded-sm overflow-hidden">
+      <div>
         {/* Card Header with Bulk Actions */}
-        <div className="flex items-center justify-between px-2 py-1 bg-muted/50 border-b">
+        <div className="flex items-center justify-between px-2 py-1">
           {selectedTodoIds.size > 0 ? (
             <>
               {/* Selection Mode Header */}
@@ -639,7 +588,7 @@ export function TodosPageClient({
                     selectedTodos.length > 0 && displayedTodos.length > 0
                   }
                   onCheckedChange={toggleSelectAll}
-                  className="data-[state=checked]:bg-blue-600 data-[state=checked]:text-white data-[state=checked]:border-blue-600"
+                  className="data-[state=checked]:bg-muted0 data-[state=checked]:text-white data-[state=checked]:border-muted0"
                 />
                 <label htmlFor="select-all" className="text-sm font-medium">
                   {selectedTodoIds.size} selected
@@ -745,7 +694,7 @@ export function TodosPageClient({
                   onCheckedChange={(checked: boolean) => {
                     toggleSelectAll(checked)
                   }}
-                  className="data-[state=checked]:bg-blue-600 data-[state=checked]:text-white data-[state=checked]:border-blue-600"
+                  className="data-[state=checked]:bg-muted0 data-[state=checked]:text-white data-[state=checked]:border-muted0"
                 />
                 <label htmlFor="select-all" className="text-sm font-medium">
                   Select All
@@ -786,10 +735,12 @@ export function TodosPageClient({
             {todoGroups.map((group) => (
               <div
                 key={group.label}
-                className="col-span-5 grid grid-cols-subgrid"
+                className={`rounded-lg mt-4 col-span-5 grid grid-cols-subgrid ${
+                  group.label === 'Today' ? 'bg-muted dark:bg-muted' : ''
+                }`}
               >
                 {/* Date Header */}
-                <div className={`col-span-5 px-2 py-2 border-t bg-muted/30}`}>
+                <div className={`col-span-5 px-2 py-2`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {group.isPast ? (
@@ -825,10 +776,6 @@ export function TodosPageClient({
                         {group.label}
                       </h3>
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      {group.todos.length} item
-                      {group.todos.length !== 1 ? 's' : ''}
-                    </span>
                   </div>
                 </div>
 
@@ -859,6 +806,15 @@ export function TodosPageClient({
             ))}
           </div>
         )}
+      </div>
+
+      <div className="mt-8">
+        <AddTodoForm
+          onClose={() => {}}
+          setPendingEdits={setPendingEdits}
+          users={users}
+          currentUserId={userId}
+        />
       </div>
     </div>
   )

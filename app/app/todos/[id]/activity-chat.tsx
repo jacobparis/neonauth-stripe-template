@@ -213,9 +213,7 @@ export function ActivityChat({
         },
       }
 
-      startTransition(() => {
-        addOptimisticComment(optimisticComment)
-      })
+      addOptimisticComment(optimisticComment)
       await addComment(formData)
     } catch (error) {
       console.error('Failed to save AI activity comment:', error)
@@ -246,9 +244,7 @@ export function ActivityChat({
         },
       }
 
-      startTransition(() => {
-        addOptimisticComment(optimisticComment)
-      })
+      addOptimisticComment(optimisticComment)
       await addComment(formData)
     } catch (error) {
       console.error('Failed to save AI reasoning comment:', error)
@@ -389,9 +385,7 @@ export function ActivityChat({
               },
             }
 
-            startTransition(() => {
-              addOptimisticComment(optimisticComment)
-            })
+            addOptimisticComment(optimisticComment)
             await addComment(formData)
           }
         } catch (error) {
@@ -496,9 +490,7 @@ export function ActivityChat({
         },
       }
 
-      startTransition(() => {
-        addOptimisticComment(optimisticUserComment)
-      })
+      addOptimisticComment(optimisticUserComment)
 
       // Save user comment to database
       await addComment(userFormData)
