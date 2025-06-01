@@ -121,7 +121,7 @@ function AddTodoForm({
           placeholder="What needs to be done?"
           value={todoText}
           onChange={(e) => setTodoText(e.target.value)}
-          className="min-h-[24px] max-h-[calc(75dvh)] resize-none rounded-2xl !text-base bg-muted pb-20 dark:border-zinc-700"
+          className="min-h-[24px] max-h-[calc(75dvh)] resize-none rounded-xl !text-base bg-muted pb-20 dark:border-zinc-700"
           rows={2}
           autoFocus
           onKeyDown={(event) => {
@@ -232,9 +232,7 @@ const TodoItem = memo(function TodoItem({
 
   return (
     <div
-      className={`grid grid-cols-subgrid col-span-5 px-2 py-1.5 gap-4 ${
-        todo.completed ? 'bg-muted/30' : ''
-      } hover:bg-muted/20 relative group`}
+      className={`grid grid-cols-subgrid col-span-5 px-2 py-1.5 gap-4 hover:bg-muted rounded-md relative group transition-colors`}
     >
       <div className="flex items-center gap-2">
         <div className="flex items-center h-5 pt-0.5">
@@ -326,15 +324,11 @@ export function TodosPageClient({
   todos,
   todoLimit,
   userId,
-  email,
-  name,
   users,
 }: {
   todos: Todo[]
   todoLimit: number
   userId: string
-  email: string
-  name: string | null
   users: UserWithProfile[]
 }) {
   const [searchQuery, setSearchQuery] = useState('')
@@ -346,9 +340,6 @@ export function TodosPageClient({
   const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(
     undefined,
   )
-  const [isAddTodoOpen, setIsAddTodoOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-
   // Track all edits in one place
   const [pendingEdits, setPendingEdits] = useState<PendingEdit[]>([])
 
@@ -527,39 +518,6 @@ export function TodosPageClient({
 
   return (
     <div className="space-y-6">
-      {/* Productivity Metrics */}
-      <div className="grid grid-cols-5 gap-4 mt-8">
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border shadow-sm col-span-2">
-          <div className="flex items-center justify-between mb-1">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Active Deadlines
-            </h3>
-          </div>
-          <div className="flex items-baseline justify-between mb-2">
-            <p className="text-2xl font-bold">
-              {displayedTodos.length}/{todoLimit}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {displayedTodos.length >= todoLimit ? (
-                <span className="text-red-500 dark:text-red-400">
-                  Upgrade to add more
-                </span>
-              ) : (
-                <span>{todoLimit - displayedTodos.length} remaining</span>
-              )}
-            </p>
-          </div>
-          <Progress
-            value={(displayedTodos.length / todoLimit) * 100}
-            className={
-              displayedTodos.length >= todoLimit
-                ? 'bg-red-200 dark:bg-red-900'
-                : ''
-            }
-          />
-        </div>
-      </div>
-
       {/* Search, Filter, and Add */}
       <div className="flex flex-wrap gap-4 items-center">
         <div className="relative flex-1 min-w-[200px]">
@@ -735,9 +693,7 @@ export function TodosPageClient({
             {todoGroups.map((group) => (
               <div
                 key={group.label}
-                className={`rounded-lg mt-4 col-span-5 grid grid-cols-subgrid ${
-                  group.label === 'Today' ? 'bg-muted dark:bg-muted' : ''
-                }`}
+                className={`rounded-lg mt-4 col-span-5 grid grid-cols-subgrid`}
               >
                 {/* Date Header */}
                 <div className={`col-span-5 px-2 py-2`}>
@@ -815,6 +771,20 @@ export function TodosPageClient({
           users={users}
           currentUserId={userId}
         />
+
+        {/* Minimal Active Deadlines Counter */}
+        <div className="flex items-center justify-between text-xs text-muted-foreground mt-2 px-2">
+          <span>
+            {displayedTodos.length}/{todoLimit} todos
+          </span>
+          {displayedTodos.length >= todoLimit ? (
+            <span className="text-red-500 dark:text-red-400">
+              Upgrade to add more
+            </span>
+          ) : (
+            <span>{todoLimit - displayedTodos.length} remaining</span>
+          )}
+        </div>
       </div>
     </div>
   )

@@ -27,8 +27,6 @@ export default async function TodosPage() {
         todos={todos}
         todoLimit={todoLimit}
         userId={user.id}
-        email={user.primaryEmail || ''}
-        name={user.displayName}
         users={users}
       />
     </Suspense>
