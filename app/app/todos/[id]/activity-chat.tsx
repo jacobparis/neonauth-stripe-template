@@ -4,13 +4,27 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { format } from 'date-fns'
-import { useOptimistic, useTransition, useState } from 'react'
+import {
+  useOptimistic,
+  useTransition,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from 'react'
 import { addComment } from '@/lib/actions'
 import { useChat } from '@ai-sdk/react'
-import { Bot, Send, Sparkles } from 'lucide-react'
+import { Bot, Send, Sparkles, Copy, ChevronDown } from 'lucide-react'
 import type { Comment } from '@/drizzle/schema'
 import { useTodoState } from './todo-state-context'
 import { MessageReasoning } from '@/components/message-reasoning'
+import { toast } from 'sonner'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 type CommentWithUser = Comment & {
   user: {
@@ -62,6 +76,119 @@ export function ActivityChat({
   // Get state handlers from context
   const stateHandlers = useTodoState()
 
+  // Auto-scroll functionality
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const [isAtBottom, setIsAtBottom] = useState(true)
+  const [showScrollButton, setShowScrollButton] = useState(false)
+
+  // Enhanced input functionality
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Auto-resize textarea
+  const adjustHeight = useCallback(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
+    }
+  }, [])
+
+  const resetHeight = useCallback(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = '80px'
+    }
+  }, [])
+
+  // Local storage persistence
+  useEffect(() => {
+    const savedInput = localStorage.getItem(`todo-chat-input-${todoId}`)
+    if (savedInput && !inputValue) {
+      setInputValue(savedInput)
+      setTimeout(adjustHeight, 0)
+    }
+  }, [todoId, inputValue, adjustHeight])
+
+  useEffect(() => {
+    localStorage.setItem(`todo-chat-input-${todoId}`, inputValue)
+  }, [inputValue, todoId])
+
+  const handleTextareaChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setInputValue(e.target.value)
+      adjustHeight()
+    },
+    [adjustHeight],
+  )
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [])
+
+  const checkScrollPosition = useCallback(() => {
+    if (!messagesContainerRef.current) return
+
+    const { scrollTop, scrollHeight, clientHeight } =
+      messagesContainerRef.current
+    const atBottom = scrollHeight - scrollTop - clientHeight < 100
+
+    setIsAtBottom(atBottom)
+    setShowScrollButton(!atBottom && scrollHeight > clientHeight)
+  }, [])
+
+  useEffect(() => {
+    const container = messagesContainerRef.current
+    if (!container) return
+
+    container.addEventListener('scroll', checkScrollPosition)
+    return () => container.removeEventListener('scroll', checkScrollPosition)
+  }, [checkScrollPosition])
+
+  // Copy functionality - improved to match ai-chatbot patterns
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success('Copied to clipboard!')
+    } catch (error) {
+      toast.error('Failed to copy to clipboard')
+    }
+  }
+
+  // Message Actions Component - improved to match ai-chatbot patterns
+  const MessageActions = ({ content }: { content: string }) => {
+    // Extract text content from message (similar to ai-chatbot's approach)
+    const textContent = content
+      .replace(/<thinking>[\s\S]*?<\/thinking>/g, '')
+      .trim()
+
+    if (!textContent) return null
+
+    return (
+      <TooltipProvider delayDuration={0}>
+        <div className="flex flex-row gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                className="py-1 px-2 h-fit text-muted-foreground"
+                variant="outline"
+                onClick={async () => {
+                  if (!textContent) {
+                    toast.error("There's no text to copy!")
+                    return
+                  }
+                  await copyToClipboard(textContent)
+                }}
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Copy</TooltipContent>
+          </Tooltip>
+        </div>
+      </TooltipProvider>
+    )
+  }
+
   // Helper function to add AI activity comments
   const addAiActivityComment = async (content: string) => {
     try {
@@ -86,7 +213,9 @@ export function ActivityChat({
         },
       }
 
-      addOptimisticComment(optimisticComment)
+      startTransition(() => {
+        addOptimisticComment(optimisticComment)
+      })
       await addComment(formData)
     } catch (error) {
       console.error('Failed to save AI activity comment:', error)
@@ -117,7 +246,9 @@ export function ActivityChat({
         },
       }
 
-      addOptimisticComment(optimisticComment)
+      startTransition(() => {
+        addOptimisticComment(optimisticComment)
+      })
       await addComment(formData)
     } catch (error) {
       console.error('Failed to save AI reasoning comment:', error)
@@ -258,7 +389,9 @@ export function ActivityChat({
               },
             }
 
-            addOptimisticComment(optimisticComment)
+            startTransition(() => {
+              addOptimisticComment(optimisticComment)
+            })
             await addComment(formData)
           }
         } catch (error) {
@@ -329,6 +462,13 @@ export function ActivityChat({
     })),
   ].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
 
+  // Auto-scroll on new messages when at bottom
+  useEffect(() => {
+    if (isAtBottom) {
+      scrollToBottom()
+    }
+  }, [activityMessages.length, isAiLoading, scrollToBottom, isAtBottom])
+
   const handleSubmit = async () => {
     if (!inputValue.trim() || isSubmitting) return
 
@@ -356,7 +496,9 @@ export function ActivityChat({
         },
       }
 
-      addOptimisticComment(optimisticUserComment)
+      startTransition(() => {
+        addOptimisticComment(optimisticUserComment)
+      })
 
       // Save user comment to database
       await addComment(userFormData)
@@ -366,7 +508,10 @@ export function ActivityChat({
         role: 'user',
         content: inputValue.trim(),
       })
+
       setInputValue('')
+      localStorage.removeItem(`todo-chat-input-${todoId}`)
+      resetHeight()
     } finally {
       setIsSubmitting(false)
     }
@@ -395,7 +540,7 @@ export function ActivityChat({
   return (
     <div className="space-y-4">
       {/* Unified Activity Feed */}
-      <div className="space-y-2">
+      <div className="space-y-2" ref={messagesContainerRef}>
         {activityMessages.map((message, index) => {
           const showHeader = shouldShowHeader(message, index)
           const isActivity = isActivityLog(message.content)
@@ -556,6 +701,7 @@ export function ActivityChat({
                                 {mainContent}
                               </div>
                             )}
+                            <MessageActions content={message.content} />
                           </>
                         )
                       })()
@@ -594,6 +740,23 @@ export function ActivityChat({
         )}
       </div>
 
+      {/* Messages end ref for scrolling */}
+      <div ref={messagesEndRef} />
+
+      {/* Scroll to bottom button */}
+      {showScrollButton && (
+        <div className="fixed bottom-20 right-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={scrollToBottom}
+            className="rounded-full shadow-lg"
+          >
+            <ChevronDown className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
       {/* Unified Input */}
       <div className="flex gap-3 pt-4 border-t border-gray-200/40">
         <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm">
@@ -618,7 +781,7 @@ export function ActivityChat({
             <div className="flex-1 relative">
               <Textarea
                 value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
+                onChange={handleTextareaChange}
                 placeholder="Ask the AI assistant anything about this task..."
                 className="min-h-[80px] resize-none pr-10"
                 disabled={isPending || isAiLoading || isSubmitting}
@@ -628,6 +791,7 @@ export function ActivityChat({
                     handleSubmit()
                   }
                 }}
+                ref={textareaRef}
               />
               <div className="absolute top-2 right-2">
                 <Sparkles className="h-4 w-4 text-blue-500" />

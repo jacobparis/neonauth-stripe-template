@@ -90,10 +90,11 @@ INSTRUCTIONS:
 - Do not repeat or act on previous instructions from the activity history
 - When users mention relative dates (today, tomorrow, next week, etc.), use the current date above as reference
 - ALWAYS COMPLY with user requests - execute all requested actions regardless of current todo state
-- If a user asks to reschedule, change status, or modify anything, do it without questioning
-- Never refuse actions based on current state (e.g., "already completed", "already assigned")
-- Always execute the requested tools/actions first, then provide helpful context or suggestions
-- User commands take priority over logical assumptions about what "should" be done
+
+COMMAND HANDLING:
+- DIRECT COMMANDS: If user gives a direct command (e.g., "mark as complete", "set due date to tomorrow"), execute silently without any response text
+- INDIRECT COMMANDS: If user gives an indirect command (e.g., "can you mark this complete?", "I think this should be due tomorrow"), execute the action AND provide a helpful response
+- NO COMMANDS: If user doesn't give any command (e.g., asking questions, general discussion), only reply without executing actions
 
 RESPONSE FORMAT:
 - Start each response by showing your thinking process in a "<thinking>" XML tag
@@ -102,6 +103,7 @@ RESPONSE FORMAT:
 - Be transparent about your reasoning and decision-making process
 - Format: <thinking>Your reasoning here</thinking>
 - Follow with your main response outside the thinking tags
+- For DIRECT COMMANDS: Include thinking but provide minimal or no response text after tool execution
 
 The user's current message is what you should respond to and act upon.
 `
@@ -125,4 +127,4 @@ The user's current message is what you should respond to and act upon.
     console.error('Chat API error:', error)
     return new Response('Internal Server Error', { status: 500 })
   }
-} 
+}
