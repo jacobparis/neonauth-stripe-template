@@ -19,21 +19,13 @@ export async function processDeleteTodos(ids: number[], userId?: string) {
   if (userId) {
     // Get the todos before deleting them
     const todosToDelete = await db.query.todos.findMany({
-      where: and(
-        inArray(todos.id, validIds),
-        eq(todos.assignedToId, userId)
-      )
+      where: inArray(todos.id, validIds)
     })
 
     // Delete the todos
     await db
       .delete(todos)
-      .where(
-        and(
-          inArray(todos.id, validIds),
-          eq(todos.assignedToId, userId)
-        )
-      )
+      .where(inArray(todos.id, validIds))
 
     // Create notifications for the deleted todos
     await Promise.all(
@@ -55,21 +47,13 @@ export async function processDeleteTodos(ids: number[], userId?: string) {
     
     // Get the todos before deleting them
     const todosToDelete = await db.query.todos.findMany({
-      where: and(
-        inArray(todos.id, validIds),
-        eq(todos.assignedToId, user.id)
-      )
+      where: inArray(todos.id, validIds)
     })
 
     // Delete the todos
     await db
       .delete(todos)
-      .where(
-        and(
-          inArray(todos.id, validIds),
-          eq(todos.assignedToId, user.id)
-        )
-      )
+      .where(inArray(todos.id, validIds))
 
     // Create notifications for the deleted todos
     await Promise.all(

@@ -14,23 +14,11 @@ import { format, isValid } from 'date-fns'
 import { deleteTodo } from '@/actions/delete-todos'
 import { updateTodo } from '@/lib/actions'
 import { useRouter } from 'next/navigation'
-import { CalendarIcon, Trash2, UserIcon } from 'lucide-react'
-import type { Todo, User } from '@/drizzle/schema'
-import { UserSelector } from '../user-selector'
+import { CalendarIcon, Trash2 } from 'lucide-react'
+import type { Todo } from '@/drizzle/schema'
 import { useTodoState } from './todo-state-context'
 
-// Extend User type to include profileImageUrl from Stack Auth
-type UserWithProfile = User & {
-  profileImageUrl: string | null
-}
-
-export function TodoItemPageClient({
-  todo,
-  users,
-}: {
-  todo: Todo
-  users: UserWithProfile[]
-}) {
+export function TodoItemPageClient({ todo }: { todo: Todo }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
@@ -42,10 +30,8 @@ export function TodoItemPageClient({
     setTitle,
     description,
     setDescription,
-    assignedUserId,
     completed,
     handleUpdateDueDate: contextHandleUpdateDueDate,
-    handleUpdateAssignment,
     handleToggleCompleted,
   } = useTodoState()
 
@@ -105,16 +91,6 @@ export function TodoItemPageClient({
               >
                 {completed ? 'Completed' : 'Done'}
               </Button>
-
-              <div className="flex items-center gap-2">
-                <UserIcon className="h-4 w-4 text-gray-500" />
-                <UserSelector
-                  users={users}
-                  selectedUserId={assignedUserId}
-                  onSelectUser={handleUpdateAssignment}
-                  triggerClassName="bg-gray-50/60 rounded-lg border border-gray-200/40 hover:bg-gray-100/60"
-                />
-              </div>
 
               <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                 <PopoverTrigger asChild>

@@ -8,7 +8,6 @@ import React, {
 } from 'react'
 import { updateDueDate } from '@/actions/update-due-date'
 import { toggleTodoCompleted } from '@/actions/toggle-completed'
-import { updateTodoAssignment } from '@/lib/actions'
 import type { Todo } from '@/drizzle/schema'
 
 export interface TodoStateHandlers {
@@ -18,12 +17,9 @@ export interface TodoStateHandlers {
   setTitle: (title: string) => void
   description: string
   setDescription: (description: string) => void
-  assignedUserId: string | null
-  setAssignedUserId: (userId: string | null) => void
   completed: boolean
   setCompleted: (completed: boolean) => void
   handleUpdateDueDate: (newDate: Date | undefined) => void
-  handleUpdateAssignment: (userId: string | null) => void
   handleToggleCompleted: () => void
 }
 
@@ -50,9 +46,6 @@ export function TodoStateProvider({
   )
   const [title, setTitle] = useState(todo.title)
   const [description, setDescription] = useState(todo.description || '')
-  const [assignedUserId, setAssignedUserId] = useState<string | null>(
-    todo.assignedToId,
-  )
   const [completed, setCompleted] = useState(todo.completed)
 
   const handleUpdateDueDate = (newDate: Date | undefined) => {
@@ -63,34 +56,6 @@ export function TodoStateProvider({
       await updateDueDate(formData)
     })
     setDate(newDate)
-  }
-
-  const handleUpdateAssignment = (userId: string | null) => {
-    const previousAssignedUserId = assignedUserId
-
-    // Optimistic update
-    setAssignedUserId(userId)
-
-    startTransition(async () => {
-      try {
-        const formData = new FormData()
-        formData.append('id', todo.id.toString())
-        if (userId) {
-          formData.append('assignedToId', userId)
-        }
-        const result = await updateTodoAssignment(formData)
-
-        if (result?.error) {
-          // Revert optimistic update on error
-          setAssignedUserId(previousAssignedUserId)
-          console.error('Failed to update assignment:', result.error)
-        }
-      } catch (error) {
-        // Revert optimistic update on error
-        setAssignedUserId(previousAssignedUserId)
-        console.error('Failed to update assignment:', error)
-      }
-    })
   }
 
   const handleToggleCompleted = () => {
@@ -110,12 +75,9 @@ export function TodoStateProvider({
     setTitle,
     description,
     setDescription,
-    assignedUserId,
-    setAssignedUserId,
     completed,
     setCompleted,
     handleUpdateDueDate,
-    handleUpdateAssignment,
     handleToggleCompleted,
   }
 

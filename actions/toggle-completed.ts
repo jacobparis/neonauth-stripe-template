@@ -36,22 +36,14 @@ export async function processToggleCompleted(ids: number[], payload: { completed
 
   // Get current todos to check for changes
   const currentTodos = await db.query.todos.findMany({
-    where: and(
-      inArray(todos.id, validIds),
-      eq(todos.assignedToId, payload.userId)
-    )
+    where: inArray(todos.id, validIds)
   })
 
-  // When called via QStash, use the passed userId 
+  // Update the todos
   const [updatedTodos] = await db
     .update(todos)
     .set({ completed: payload.completed })
-    .where(
-      and(
-        inArray(todos.id, validIds),
-        eq(todos.assignedToId, payload.userId)
-      )
-    )
+    .where(inArray(todos.id, validIds))
     .returning()
 
   // Create activity comments for todos that actually changed

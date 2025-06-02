@@ -1,4 +1,4 @@
-import { getTodo, getUsersWithProfiles } from '@/lib/actions'
+import { getTodo } from '@/lib/actions'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { stackServerApp } from '@/stack'
@@ -28,9 +28,8 @@ export default async function TodoItemPage({
   try {
     const user = await stackServerApp.getUser({ or: 'redirect' })
 
-    const [todo, users, rateLimitStatus] = await Promise.all([
+    const [todo, rateLimitStatus] = await Promise.all([
       getTodo(todoId),
-      getUsersWithProfiles(),
       getRateLimitStatus(user.id),
     ])
 
@@ -51,7 +50,7 @@ export default async function TodoItemPage({
         </div>
 
         <TodoStateProvider todo={todo}>
-          <TodoItemPageClient todo={todo} users={users} />
+          <TodoItemPageClient todo={todo} />
 
           {/* Activity Section */}
           <div className="px-6 mt-16">

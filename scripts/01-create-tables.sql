@@ -20,14 +20,34 @@ CREATE TABLE IF NOT EXISTS user_metrics (
 
 -- Create todos table
 CREATE TABLE IF NOT EXISTS todos (
-  id SERIAL PRIMARY KEY,
-  text TEXT NOT NULL,
-  completed BOOLEAN DEFAULT FALSE NOT NULL,
-  due_date TIMESTAMP WITH TIME ZONE,
-  project_id INTEGER REFERENCES projects(id),
-  user_id TEXT REFERENCES neon_auth.users_sync(id),
-  owner_id TEXT,
-  FOREIGN KEY (owner_id) REFERENCES neon_auth.users_sync(id)
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT,
+    completed BOOLEAN NOT NULL DEFAULT false,
+    due_date TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+
+-- Create users_sync table
+CREATE TABLE IF NOT EXISTS users_sync (
+    id VARCHAR(255) PRIMARY KEY,
+    email VARCHAR(255),
+    name VARCHAR(255),
+    image TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    deleted_at TIMESTAMP
+);
+
+-- Create comments table
+CREATE TABLE IF NOT EXISTS comments (
+    id SERIAL PRIMARY KEY,
+    content TEXT NOT NULL,
+    todo_id INTEGER NOT NULL,
+    user_id VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 -- Create issues table if it doesn't exist

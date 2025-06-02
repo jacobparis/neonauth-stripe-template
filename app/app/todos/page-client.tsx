@@ -38,15 +38,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import Link from 'next/link'
-import { UserSelector } from './user-selector'
-import { UserAvatar } from './user-avatar'
 import { groupTodosByDueDate } from './utils'
 import { Textarea } from '@/components/ui/textarea'
-
-// Extend User type to include profileImageUrl from Stack Auth
-type UserWithProfile = User & {
-  profileImageUrl: string | null
-}
 
 // Track all edits in one place
 type PendingEdit =
@@ -58,14 +51,10 @@ type PendingEdit =
 function AddTodoForm({
   onClose,
   setPendingEdits,
-  users,
-  currentUserId,
   rateLimitStatus,
 }: {
   onClose: () => void
   setPendingEdits: React.Dispatch<React.SetStateAction<PendingEdit[]>>
-  users: UserWithProfile[]
-  currentUserId: string
   rateLimitStatus: {
     remaining: number
     reset: number
@@ -76,9 +65,6 @@ function AddTodoForm({
   )
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
   const [todoText, setTodoText] = useState('')
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(
-    currentUserId,
-  )
   const [isGenerating, setIsGenerating] = useState(false)
 
   async function generateTodoFromPrompt(prompt: string) {
@@ -124,7 +110,6 @@ function AddTodoForm({
         description: null,
         completed: false,
         dueDate: finalDueDate || null,
-        assignedToId: selectedUserId,
         createdAt: new Date(),
         updatedAt: new Date(),
       }
@@ -140,9 +125,6 @@ function AddTodoForm({
       if (finalDueDate) {
         serverFormData.append('dueDate', finalDueDate.toISOString())
       }
-      if (selectedUserId) {
-        serverFormData.append('assignedToId', selectedUserId)
-      }
 
       // Send the actual request (non-blocking)
       addTodo(serverFormData)
@@ -150,7 +132,6 @@ function AddTodoForm({
       // Reset form state
       setTodoText('')
       setSelectedDueDate(undefined)
-      setSelectedUserId(currentUserId)
       onClose()
     } catch (error) {
     } finally {
@@ -163,7 +144,7 @@ function AddTodoForm({
       <form action={handleAction} className="relative">
         <Textarea
           name="text"
-          placeholder="Describe what needs to be done... (e.g., 'Review the marketing proposal by Friday and assign to John')"
+          placeholder="Describe what needs to be done... (e.g., 'Review the marketing proposal by Friday')"
           value={todoText}
           onChange={(e) => setTodoText(e.target.value)}
           className="min-h-[24px] max-h-[calc(75dvh)] resize-none rounded-xl !text-base bg-muted pb-20 dark:border-zinc-700"
@@ -184,24 +165,14 @@ function AddTodoForm({
                 if (selectedDueDate) {
                   formData.append('dueDate', selectedDueDate.toISOString())
                 }
-                if (selectedUserId) {
-                  formData.append('assignedToId', selectedUserId)
-                }
                 handleAction(formData)
               }
             }
           }}
         />
 
-        {/* Assignment and Date Controls */}
+        {/* Date Controls */}
         <div className="absolute bottom-0 left-0 p-2 flex items-center gap-2">
-          <UserSelector
-            users={users}
-            selectedUserId={selectedUserId}
-            onSelectUser={setSelectedUserId}
-            triggerClassName="h-8 px-2 text-xs"
-          />
-
           <Popover modal open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -269,7 +240,6 @@ const TodoItem = memo(function TodoItem({
   onDelete,
   onToggleCompleted,
   onUpdateDueDate,
-  users,
 }: {
   todo: Todo
   isSelected: boolean
@@ -277,13 +247,10 @@ const TodoItem = memo(function TodoItem({
   onDelete: (id: number) => void
   onToggleCompleted: (id: number, completed: boolean) => void
   onUpdateDueDate: (id: number, date: Date | null) => void
-  users: UserWithProfile[]
 }) {
-  const assignedUser = users.find((user) => user.id === todo.assignedToId)
-
   return (
     <div
-      className={`grid grid-cols-subgrid col-span-5 px-2 py-1.5 gap-4 hover:bg-muted rounded-md relative group transition-colors`}
+      className={`grid grid-cols-subgrid col-span-4 px-2 py-1.5 gap-4 hover:bg-muted rounded-md relative group transition-colors`}
     >
       <div className="flex items-center gap-2">
         <div className="flex items-center h-5 pt-0.5">
@@ -299,21 +266,6 @@ const TodoItem = memo(function TodoItem({
           />
         </div>
 
-        {assignedUser ? (
-          <UserAvatar
-            user={{
-              name: assignedUser.name,
-              avatarUrl: assignedUser.profileImageUrl,
-            }}
-            showName={false}
-            className="text-xs"
-          />
-        ) : (
-          <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
-            <span className="text-xs text-muted-foreground">?</span>
-          </div>
-        )}
-
         <div className="min-w-0">
           <Link
             href={`/app/todos/${todo.id}`}
@@ -327,9 +279,7 @@ const TodoItem = memo(function TodoItem({
         </div>
       </div>
 
-      <div className="flex items-center">
-        {/* Empty middle column since assignee moved to first column */}
-      </div>
+      <div className="flex items-center">{/* Empty middle column */}</div>
 
       <div className="flex items-center gap-2 justify-end -mr-2">
         {!todo.completed && (
@@ -374,12 +324,10 @@ const TodoItem = memo(function TodoItem({
 export function TodosPageClient({
   todos,
   userId,
-  users,
   rateLimitStatus,
 }: {
   todos: Todo[]
   userId: string
-  users: UserWithProfile[]
   rateLimitStatus: {
     remaining: number
     reset: number
@@ -407,12 +355,10 @@ export function TodosPageClient({
       .map((edit) => (edit as { type: 'add'; todo: Todo }).todo)
 
     const validOptimisticTodos = optimisticTodos.filter((optimisticTodo) => {
-      // Remove optimistic todo if a real todo with the same title and assignment exists
+      // Remove optimistic todo if a real todo with the same title exists
       return !current.some(
         (realTodo) =>
-          realTodo.title === optimisticTodo.title &&
-          realTodo.assignedToId === optimisticTodo.assignedToId &&
-          realTodo.id > 0, // Real todos have positive IDs
+          realTodo.title === optimisticTodo.title && realTodo.id > 0, // Real todos have positive IDs
       )
     })
 
@@ -743,14 +689,14 @@ export function TodosPageClient({
             No todos match your search
           </p>
         ) : (
-          <div className="grid grid-cols-[1fr_auto_auto_auto_auto]">
+          <div className="grid grid-cols-[1fr_auto_auto_auto]">
             {todoGroups.map((group) => (
               <div
                 key={group.label}
-                className={`rounded-lg mt-4 col-span-5 grid grid-cols-subgrid`}
+                className={`rounded-lg mt-4 col-span-4 grid grid-cols-subgrid`}
               >
                 {/* Date Header */}
-                <div className={`col-span-5 px-2 py-2`}>
+                <div className={`col-span-4 px-2 py-2`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {group.isPast ? (
@@ -801,7 +747,6 @@ export function TodosPageClient({
                         onDelete={handleDelete}
                         onToggleCompleted={handleToggleCompleted}
                         onUpdateDueDate={handleUpdateDueDate}
-                        users={users}
                       />
                     ))}
                   </div>
@@ -824,8 +769,6 @@ export function TodosPageClient({
           <AddTodoForm
             onClose={() => {}}
             setPendingEdits={setPendingEdits}
-            users={users}
-            currentUserId={userId}
             rateLimitStatus={rateLimitStatus}
           />
 

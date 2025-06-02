@@ -2,9 +2,8 @@
 
 import { revalidatePath } from "next/cache"
 import { db } from "@/lib/db"
-import { todos, user_metrics, users_sync, comments } from "@/drizzle/schema"
+import { todos, users_sync, comments } from "@/drizzle/schema"
 import { eq, desc, count, isNull } from "drizzle-orm"
-import { getStripePlan } from "@/app/api/stripe/plans"
 import { stackServerApp, getAccessToken } from "@/stack"
 import { cookies } from "next/headers"
 import { createNotification, watchTask, notifyWatchers, unwatchTask } from '@/app/api/notifications/notifications'
@@ -80,40 +79,10 @@ export async function getTodo(id: number) {
 
 export async function getUsers() {
   try {
-    return await db.select().from(users_sync).where(isNull(users_sync.deleted_at)).orderBy(users_sync.name)
+    const result = await db.select().from(users_sync).where(isNull(users_sync.deleted_at)).orderBy(users_sync.name)
+    return result
   } catch (error) {
     console.error("Failed to fetch users:", error)
-    return []
-  }
-}
-
-export async function getUsersWithProfiles() {
-  try {
-    const dbUsers = await db.select().from(users_sync).where(isNull(users_sync.deleted_at)).orderBy(users_sync.name)
-    
-    // For each user, try to get their Stack Auth profile
-    const usersWithProfiles = await Promise.all(
-      dbUsers.map(async (dbUser) => {
-        try {
-          // Get the Stack Auth user data for profile image
-          const stackUser = await stackServerApp.getUser(dbUser.id)
-          return {
-            ...dbUser,
-            profileImageUrl: stackUser?.profileImageUrl || null,
-          }
-        } catch (error) {
-          // If we can't get Stack Auth data, just use database data
-          return {
-            ...dbUser,
-            profileImageUrl: null,
-          }
-        }
-      })
-    )
-    
-    return usersWithProfiles
-  } catch (error) {
-    console.error("Failed to fetch users with profiles:", error)
     return []
   }
 }
@@ -136,7 +105,6 @@ export async function addTodo(formData: FormData) {
   }
 
   const text = formData.get('text') as string
-  const assignedToId = formData.get('assignedToId') as string | null
   const dueDateStr = formData.get('dueDate') as string | null
 
   if (!text || typeof text !== 'string') {
@@ -158,39 +126,11 @@ export async function addTodo(formData: FormData) {
   }
 
   try {
-    let userMetrics = await db.query.user_metrics.findFirst({
-      where: eq(user_metrics.userId, user.id),
-    })
-
-    if (!userMetrics) {
-      const [newMetrics] = await db.insert(user_metrics).values({ userId: user.id, todosCreated: 0 }).returning()
-      userMetrics = newMetrics
-    }
-
-    const totalTodos = await db
-      .select({ count: count() })
-      .from(todos)
-      .then((result) => result[0]?.count ?? 0)
-
-    const plan = await getStripePlan(user.id)
-    if (totalTodos >= plan.todoLimit) {
-      return { error: "You have reached your todo limit. Delete some todos to create new ones." }
-    }
-
     const [todo] = await db.insert(todos).values({
       title: text,
       description: description?.trim() || null,
       dueDate: dueDate,
-      assignedToId: assignedToId || user.id,
     }).returning()
-
-    await db
-      .update(user_metrics)
-      .set({
-        todosCreated: userMetrics.todosCreated + 1,
-        updatedAt: new Date(),
-      })
-      .where(eq(user_metrics.id, userMetrics.id))
 
     // Add creator as a watcher
     await watchTask({ 
@@ -225,80 +165,6 @@ export async function getTotalCreatedTodos() {
   } catch (error) {
     console.error("Failed to count todos:", error)
     return 0
-  }
-}
-
-export async function getCurrentUserTodosCreated() {
-  try {
-    const user = await stackServerApp.getUser()
-    if (!user) {
-      return 0
-    }
-
-    const userMetrics = await db.query.user_metrics.findFirst({
-      where: eq(user_metrics.userId, user.id),
-    })
-
-    return userMetrics?.todosCreated ?? 0
-  } catch (error) {
-    console.error("Failed to get user's total created todos:", error)
-    return 0
-  }
-}
-
-export async function getUserTodoMetrics(userId: string) {
-  try {
-    // Get or create user metrics
-    let userMetrics = await db.query.user_metrics.findFirst({
-      where: eq(user_metrics.userId, userId),
-    })
-
-    if (!userMetrics) {
-      // Create initial metrics record for user
-      const [newMetrics] = await db.insert(user_metrics).values({ userId, todosCreated: 0 }).returning()
-      userMetrics = newMetrics
-    }
-
-    // Get the user's plan details
-    const plan = await getStripePlan(userId)
-
-    return {
-      todosCreated: userMetrics.todosCreated,
-      todoLimit: plan.todoLimit,
-      subscription: plan.id,
-    }
-  } catch (error) {
-    console.error("Failed to get user todo metrics:", error)
-    return { error: "Failed to get user metrics" }
-  }
-}
-
-export async function resetUserTodosCreated(userId: string) {
-  try {
-    // Find the user metrics
-    const userMetrics = await db.query.user_metrics.findFirst({
-      where: eq(user_metrics.userId, userId),
-    })
-
-    if (userMetrics) {
-      // Update existing metrics
-      await db
-        .update(user_metrics)
-        .set({
-          todosCreated: 0,
-          updatedAt: new Date(),
-        })
-        .where(eq(user_metrics.id, userMetrics.id))
-    } else {
-      // Create new metrics with 0 todos
-      await db.insert(user_metrics).values({ userId, todosCreated: 0 })
-    }
-
-    revalidatePath("/")
-    return { success: true }
-  } catch (error) {
-    console.error("Failed to reset user todos created count:", error)
-    return { error: "Failed to reset todos created count" }
   }
 }
 
@@ -549,70 +415,5 @@ export async function addComment(formData: FormData) {
   } catch (error) {
     console.error("Failed to add comment:", error)
     return { error: "Failed to add comment" }
-  }
-}
-
-export async function updateTodoAssignment(formData: FormData) {
-  const id = formData.get('id')
-  const assignedToId = formData.get('assignedToId') as string | null
-
-  if (!id || typeof id !== 'string') {
-    throw new Error('Invalid todo id')
-  }
-
-  const todoId = parseInt(id)
-  const user = await stackServerApp.getUser()
-  if (!user) {
-    throw new Error("Not authenticated")
-  }
-
-  try {
-    // Get the current todo to compare changes
-    const currentTodo = await db.query.todos.findFirst({
-      where: eq(todos.id, todoId)
-    })
-
-    if (!currentTodo) {
-      throw new Error("Todo not found")
-    }
-
-    // Only update if assignment actually changed
-    if (assignedToId !== currentTodo.assignedToId) {
-      const [todo] = await db
-        .update(todos)
-        .set({ 
-          assignedToId: assignedToId || null,
-          updatedAt: new Date(),
-        })
-        .where(eq(todos.id, todoId))
-        .returning()
-
-      // Add activity comment for the assignment change
-      let assignmentComment: string
-      if (assignedToId) {
-        const assignedUser = await stackServerApp.getUser(assignedToId)
-        assignmentComment = `Assigned to ${assignedUser?.displayName || assignedUser?.primaryEmail || 'someone'}`
-      } else {
-        assignmentComment = 'Unassigned'
-      }
-
-      await db.insert(comments).values({
-        content: assignmentComment,
-        todoId,
-        userId: user.id,
-      })
-
-      // Notify all watchers of the assignment change
-      await notifyWatchers({
-        taskId: todo.id,
-        message: assignmentComment,
-        type: "info"
-      })
-    }
-
-    return { success: true }
-  } catch (error) {
-    console.error('Failed to update todo assignment:', error)
-    return { error: 'Failed to update todo assignment' }
   }
 }

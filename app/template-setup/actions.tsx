@@ -9,6 +9,120 @@ import { migrate } from 'drizzle-orm/neon-http/migrator'
 import { drizzle } from 'drizzle-orm/neon-http'
 import * as schema from '@/drizzle/schema'
 
+export async function getTableStatus() {
+  try {
+    // Check if DATABASE_URL is available first
+    if (!process.env.DATABASE_URL) {
+      console.log('DATABASE_URL not set, skipping table check')
+      return {
+        tables: {
+          todos: false,
+          users_sync: false,
+          comments: false,
+        },
+        rls: {
+          tables: {},
+        },
+      }
+    }
+
+    // Check each table individually
+    const tables = ['todos', 'users_sync', 'comments']
+    const results = await Promise.all(
+      tables.map(async (table) => {
+        try {
+          const result = await db.execute(sql`
+            SELECT EXISTS (
+              SELECT 1 FROM information_schema.tables 
+              WHERE table_name = ${table}
+            ) as exists
+          `)
+          return { table, exists: result.rows[0]?.exists || false }
+        } catch (error) {
+          return { table, exists: false }
+        }
+      }),
+    )
+
+    // Check RLS enabled and policies for each table
+    const rlsTables = ['todos', 'users_sync']
+    const rlsTableChecks = await Promise.all(
+      rlsTables.map(async (table) => {
+        try {
+          // Check if RLS is enabled
+          const rlsResult = await db.execute(sql`
+            SELECT relrowsecurity FROM pg_class WHERE relname = ${table}
+          `)
+          const rlsEnabled = rlsResult.rows[0]?.relrowsecurity === true
+          // Check if at least one policy exists
+          const policyResult = await db.execute(sql`
+            SELECT COUNT(*) as count FROM pg_policies WHERE tablename = ${table}
+          `)
+          const hasPolicy = Number(policyResult.rows[0]?.count) > 0
+          return { table, rlsEnabled, hasPolicy }
+        } catch (error) {
+          return { table, rlsEnabled: false, hasPolicy: false }
+        }
+      }),
+    )
+
+    return {
+      tables: Object.fromEntries(
+        results.map(({ table, exists }) => [table, exists]),
+      ),
+      rls: {
+        tables: Object.fromEntries(
+          rlsTableChecks.map(({ table, rlsEnabled, hasPolicy }) => [
+            table,
+            { rlsEnabled, hasPolicy },
+          ]),
+        ),
+      },
+    }
+  } catch (error) {
+    console.error('Error checking table status:', error)
+    return {
+      tables: {
+        todos: false,
+        users_sync: false,
+        comments: false,
+      },
+      rls: {
+        tables: {},
+      },
+    }
+  }
+}
+
+export async function enableRLS() {
+  try {
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL environment variable is not set')
+    }
+
+    // Enable RLS for todos table
+    await db.execute(sql`ALTER TABLE todos ENABLE ROW LEVEL SECURITY;`)
+    await db.execute(sql`DROP POLICY IF EXISTS todos_select ON todos;`)
+    await db.execute(
+      sql`CREATE POLICY todos_select ON todos FOR SELECT USING (true);`,
+    )
+
+    // Enable RLS for users_sync table
+    await db.execute(sql`ALTER TABLE users_sync ENABLE ROW LEVEL SECURITY;`)
+    await db.execute(
+      sql`DROP POLICY IF EXISTS users_sync_select ON users_sync;`,
+    )
+    await db.execute(
+      sql`CREATE POLICY users_sync_select ON users_sync FOR SELECT USING (true);`,
+    )
+
+    revalidatePath('/template-setup')
+  } catch (error) {
+    console.error('Error enabling RLS:', error)
+    throw error
+  }
+}
+
 export async function checkMigrations() {
   try {
     // Check if DATABASE_URL is available first
@@ -17,7 +131,6 @@ export async function checkMigrations() {
       return {
         tables: {
           todos: false,
-          user_metrics: false,
           users_sync: false,
         },
         rls: {
@@ -33,7 +146,7 @@ export async function checkMigrations() {
     }
 
     // Check each table individually
-    const tables = ['todos', 'user_metrics', 'users_sync']
+    const tables = ['todos', 'users_sync']
     const results = await Promise.all(
       tables.map(async (table) => {
         try {
@@ -102,7 +215,7 @@ export async function checkMigrations() {
     ])
 
     // Check RLS enabled and policies for each table
-    const rlsTables = ['todos', 'user_metrics', 'users_sync']
+    const rlsTables = ['todos', 'users_sync']
     const rlsTableChecks = await Promise.all(
       rlsTables.map(async (table) => {
         // Check if RLS is enabled
@@ -177,7 +290,6 @@ export async function checkMigrations() {
     return {
       tables: {
         todos: false,
-        user_metrics: false,
         users_sync: false,
       },
       rls: {
@@ -408,9 +520,6 @@ export async function configureRLS(formData: FormData): Promise<void> {
     // Always enable RLS and create a basic policy for each table
     await migrationDb.execute(sql`ALTER TABLE todos ENABLE ROW LEVEL SECURITY;`)
     await migrationDb.execute(
-      sql`ALTER TABLE user_metrics ENABLE ROW LEVEL SECURITY;`,
-    )
-    await migrationDb.execute(
       sql`ALTER TABLE users_sync ENABLE ROW LEVEL SECURITY;`,
     )
 
@@ -418,12 +527,6 @@ export async function configureRLS(formData: FormData): Promise<void> {
     await migrationDb.execute(sql`DROP POLICY IF EXISTS todos_select ON todos;`)
     await migrationDb.execute(
       sql`CREATE POLICY todos_select ON todos FOR SELECT USING (true);`,
-    )
-    await migrationDb.execute(
-      sql`DROP POLICY IF EXISTS user_metrics_select ON user_metrics;`,
-    )
-    await migrationDb.execute(
-      sql`CREATE POLICY user_metrics_select ON user_metrics FOR SELECT USING (true);`,
     )
     await migrationDb.execute(
       sql`DROP POLICY IF EXISTS users_sync_select ON users_sync;`,

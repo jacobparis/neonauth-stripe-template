@@ -19,21 +19,13 @@ export async function processUpdateDueDate(ids: number[], payload: { dueDate: Da
   if (payload.userId) {
     // Get current todos to check for changes
     const currentTodos = await db.query.todos.findMany({
-      where: and(
-        inArray(todos.id, validIds),
-        eq(todos.assignedToId, payload.userId)
-      )
+      where: inArray(todos.id, validIds)
     })
 
     const [updatedTodos] = await db
       .update(todos)
       .set({ dueDate: payload.dueDate })
-      .where(
-        and(
-          inArray(todos.id, validIds),
-          eq(todos.assignedToId, payload.userId)
-        )
-      )
+      .where(inArray(todos.id, validIds))
       .returning()
 
     // Create activity comments for todos that actually changed
@@ -76,21 +68,13 @@ export async function processUpdateDueDate(ids: number[], payload: { dueDate: Da
     
     // Get current todos to check for changes
     const currentTodos = await db.query.todos.findMany({
-      where: and(
-        inArray(todos.id, validIds),
-        eq(todos.assignedToId, user.id)
-      )
+      where: inArray(todos.id, validIds)
     })
 
     const [updatedTodos] = await db
       .update(todos)
       .set({ dueDate: payload.dueDate })
-      .where(
-        and(
-          inArray(todos.id, validIds),
-          eq(todos.assignedToId, user.id)
-        )
-      )
+      .where(inArray(todos.id, validIds))
       .returning()
 
     // Create activity comments for todos that actually changed

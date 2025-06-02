@@ -225,7 +225,6 @@ export async function createSampleTodos() {
     title,
     dueDate: new Date(date),
     completed: false,
-    assignedToId: user.id
   })))
   
   revalidatePath("/app/todos")
