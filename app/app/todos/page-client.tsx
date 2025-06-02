@@ -20,6 +20,7 @@ import {
   CreditCard,
   Zap,
   MoreVertical,
+  Loader2,
 } from 'lucide-react'
 import type { Todo, User } from '@/drizzle/schema'
 import {
@@ -73,44 +74,79 @@ function AddTodoForm({
   const [selectedUserId, setSelectedUserId] = useState<string | null>(
     currentUserId,
   )
+  const [isGenerating, setIsGenerating] = useState(false)
+
+  async function generateTodoFromPrompt(prompt: string) {
+    try {
+      const response = await fetch('/api/generate-todo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      })
+
+      if (!response.ok) throw new Error('Failed to generate todo')
+
+      return await response.json()
+    } catch (error) {
+      console.error('Error generating todo:', error)
+      return null
+    }
+  }
 
   async function handleAction(formData: FormData) {
     const text = formData.get('text') as string
 
     if (!text?.trim()) return
 
-    // Add due date to form data if selected
-    if (selectedDueDate) {
-      formData.append('dueDate', selectedDueDate.toISOString())
+    setIsGenerating(true)
+
+    try {
+      // Generate a clean title from the prompt
+      const generatedResult = await generateTodoFromPrompt(text.trim())
+      const finalTitle = generatedResult?.title || text.trim()
+      const parsedDueDate = generatedResult?.dueDate
+        ? new Date(generatedResult.dueDate)
+        : null
+      const finalDueDate = parsedDueDate || selectedDueDate
+
+      // Create an optimistic todo with a temporary negative ID
+      const optimisticTodo: Todo = {
+        id: -Math.floor(Math.random() * 1000) - 1,
+        title: finalTitle,
+        description: null,
+        completed: false,
+        dueDate: finalDueDate || null,
+        assignedToId: selectedUserId,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      setPendingEdits((prev) => [
+        ...prev,
+        { type: 'add', todo: optimisticTodo },
+      ])
+
+      // Prepare form data for server action
+      const serverFormData = new FormData()
+      serverFormData.append('text', finalTitle)
+      if (finalDueDate) {
+        serverFormData.append('dueDate', finalDueDate.toISOString())
+      }
+      if (selectedUserId) {
+        serverFormData.append('assignedToId', selectedUserId)
+      }
+
+      // Send the actual request (non-blocking)
+      addTodo(serverFormData)
+
+      // Reset form state
+      setTodoText('')
+      setSelectedDueDate(undefined)
+      setSelectedUserId(currentUserId)
+      onClose()
+    } finally {
+      setIsGenerating(false)
     }
-
-    // Add assigned user to form data
-    if (selectedUserId) {
-      formData.append('assignedToId', selectedUserId)
-    }
-
-    // Create an optimistic todo with a temporary negative ID
-    const optimisticTodo: Todo = {
-      id: -Math.floor(Math.random() * 1000) - 1,
-      title: text,
-      description: null,
-      completed: false,
-      dueDate: selectedDueDate || null,
-      assignedToId: selectedUserId,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-
-    setPendingEdits((prev) => [...prev, { type: 'add', todo: optimisticTodo }])
-
-    // Reset form state
-    setTodoText('')
-    setSelectedDueDate(undefined)
-    setSelectedUserId(currentUserId)
-    onClose()
-
-    // Send the actual request (non-blocking)
-    addTodo(formData)
   }
 
   return (
@@ -118,17 +154,19 @@ function AddTodoForm({
       <form action={handleAction} className="relative">
         <Textarea
           name="text"
-          placeholder="What needs to be done?"
+          placeholder="Describe what needs to be done... (e.g., 'Review the marketing proposal by Friday and assign to John')"
           value={todoText}
           onChange={(e) => setTodoText(e.target.value)}
           className="min-h-[24px] max-h-[calc(75dvh)] resize-none rounded-xl !text-base bg-muted pb-20 dark:border-zinc-700"
           rows={2}
           autoFocus
+          disabled={isGenerating}
           onKeyDown={(event) => {
             if (
               event.key === 'Enter' &&
               !event.shiftKey &&
-              !event.nativeEvent.isComposing
+              !event.nativeEvent.isComposing &&
+              !isGenerating
             ) {
               event.preventDefault()
               if (todoText.trim()) {
@@ -200,9 +238,13 @@ function AddTodoForm({
           <Button
             type="submit"
             className="rounded-full p-1.5 h-fit border dark:border-zinc-600"
-            disabled={!todoText.trim()}
+            disabled={!todoText.trim() || isGenerating}
           >
-            <Plus className="h-4 w-4" />
+            {isGenerating ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </form>
@@ -517,7 +559,7 @@ export function TodosPageClient({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-40">
       {/* Search, Filter, and Add */}
       <div className="flex flex-wrap gap-4 items-center">
         <div className="relative flex-1 min-w-[200px]">
@@ -764,28 +806,34 @@ export function TodosPageClient({
         )}
       </div>
 
-      <div className="mt-8">
-        <AddTodoForm
-          onClose={() => {}}
-          setPendingEdits={setPendingEdits}
-          users={users}
-          currentUserId={userId}
-        />
+      {/* Fixed Floating Footer with Todo Form */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+        <div className="mx-auto max-w-4xl p-4">
+          <AddTodoForm
+            onClose={() => {}}
+            setPendingEdits={setPendingEdits}
+            users={users}
+            currentUserId={userId}
+          />
 
-        {/* Minimal Active Deadlines Counter */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground mt-2 px-2">
-          <span>
-            {displayedTodos.length}/{todoLimit} todos
-          </span>
-          {displayedTodos.length >= todoLimit ? (
-            <span className="text-red-500 dark:text-red-400">
-              Upgrade to add more
+          {/* Minimal Active Deadlines Counter */}
+          <div className="flex items-center justify-between text-xs text-muted-foreground mt-2 px-2">
+            <span>
+              {displayedTodos.length}/{todoLimit} todos
             </span>
-          ) : (
-            <span>{todoLimit - displayedTodos.length} remaining</span>
-          )}
+            {displayedTodos.length >= todoLimit ? (
+              <span className="text-red-500 dark:text-red-400">
+                Upgrade to add more
+              </span>
+            ) : (
+              <span>{todoLimit - displayedTodos.length} remaining</span>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Bottom padding to account for fixed footer */}
+      <div className="h-32"></div>
     </div>
   )
 }

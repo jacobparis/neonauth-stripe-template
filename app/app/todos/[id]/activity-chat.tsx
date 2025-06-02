@@ -530,7 +530,7 @@ export function ActivityChat({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-40">
       {/* Unified Activity Feed */}
       <div className="space-y-2" ref={messagesContainerRef}>
         {activityMessages.map((message, index) => {
@@ -737,7 +737,7 @@ export function ActivityChat({
 
       {/* Scroll to bottom button */}
       {showScrollButton && (
-        <div className="fixed bottom-20 right-4">
+        <div className="fixed bottom-32 right-4">
           <Button
             variant="outline"
             size="sm"
@@ -749,33 +749,25 @@ export function ActivityChat({
         </div>
       )}
 
-      {/* Unified Input */}
-      <div className="flex gap-3 pt-4 border-t border-gray-200/40">
-        <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm">
-          <AvatarImage
-            src={user.profileImageUrl || undefined}
-            alt={user.displayName || user.primaryEmail || ''}
-          />
-          <AvatarFallback className="bg-gradient-to-br from-orange-400 to-orange-600 text-white text-xs font-semibold">
-            {user.displayName?.[0]?.toUpperCase() || 'U'}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex-1">
-          {chatError && (
-            <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-600">
-                AI assistant is currently unavailable. Please try again.
-              </p>
-            </div>
-          )}
+      {/* Fixed Input Footer */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+        <div className="mx-auto max-w-4xl p-4">
+          <div className="relative w-full">
+            {chatError && (
+              <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">
+                  AI assistant is currently unavailable. Please try again.
+                </p>
+              </div>
+            )}
 
-          <div className="flex gap-2">
-            <div className="flex-1 relative">
+            <div className="relative">
               <Textarea
                 value={inputValue}
                 onChange={handleTextareaChange}
                 placeholder="Ask the AI assistant anything about this task..."
-                className="min-h-[80px] resize-none pr-10"
+                className="min-h-[24px] max-h-[calc(75dvh)] resize-none rounded-xl !text-base bg-muted pb-16 dark:border-zinc-700"
+                rows={2}
                 disabled={isPending || isAiLoading || isSubmitting}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
@@ -785,25 +777,34 @@ export function ActivityChat({
                 }}
                 ref={textareaRef}
               />
-              <div className="absolute top-2 right-2">
-                <Sparkles className="h-4 w-4 text-blue-500" />
+
+              {/* Submit Button */}
+              <div className="absolute bottom-0 right-0 p-2">
+                <Button
+                  onClick={handleSubmit}
+                  disabled={
+                    !inputValue.trim() ||
+                    isPending ||
+                    isAiLoading ||
+                    isSubmitting
+                  }
+                  className="rounded-full p-1.5 h-fit border dark:border-zinc-600"
+                >
+                  {isAiLoading || isSubmitting ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+
+              {/* Help Text */}
+              <div className="absolute bottom-0 left-0 p-2">
+                <div className="text-xs text-muted-foreground">
+                  💡 AI assistant with full task context
+                </div>
               </div>
             </div>
-            <Button
-              onClick={handleSubmit}
-              disabled={
-                !inputValue.trim() || isPending || isAiLoading || isSubmitting
-              }
-              size="sm"
-              className="self-end"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-
-          <div className="mt-2 text-xs text-gray-500">
-            💡 The AI assistant has full context of this task and can help make
-            changes
           </div>
         </div>
       </div>

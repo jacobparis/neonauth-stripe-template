@@ -8,6 +8,37 @@ import { getStripePlan } from "@/app/api/stripe/plans"
 import { stackServerApp, getAccessToken } from "@/stack"
 import { cookies } from "next/headers"
 import { createNotification, watchTask, notifyWatchers, unwatchTask } from '@/app/api/notifications/notifications'
+import { generateObject } from 'ai'
+import { myProvider } from '@/lib/ai/providers'
+import { format } from 'date-fns'
+import { z } from 'zod'
+
+export async function generateTodoFromUserMessage({
+  prompt,
+}: {
+  prompt: string;
+}) {
+  const currentDate = new Date()
+
+  const { object } = await generateObject({
+    model: myProvider.languageModel('title-model'),
+    schema: z.object({
+      title: z.string().describe('A clear, actionable task title (max 80 characters)'),
+      dueDate: z.string().optional().describe('ISO date string if a deadline is mentioned'),
+    }),
+    system: `You are extracting todo information from user input.
+    
+Current date: ${format(currentDate, 'PPP')} (${format(currentDate, 'EEEE')})
+
+Rules:
+- Generate a clear, actionable title (max 80 characters)
+- If a due date/deadline is mentioned, parse it relative to today and return as ISO string
+- Examples: "tomorrow" = next day, "Friday" = next Friday, "next week" = 7 days from now`,
+    prompt: prompt,
+  });
+
+  return object;
+}
 
 export async function getTodos() {
   const accessToken = await getAccessToken(await cookies())
@@ -88,6 +119,7 @@ export async function getUsersWithProfiles() {
 
 export async function addTodo(formData: FormData) {
   const title = formData.get("text") as string
+  const description = formData.get("description") as string | null
   const dueDateStr = formData.get("dueDate") as string | null
   const assignedToId = formData.get("assignedToId") as string | null
 
@@ -122,6 +154,7 @@ export async function addTodo(formData: FormData) {
 
     const [todo] = await db.insert(todos).values({
       title,
+      description: description?.trim() || null,
       dueDate: dueDateStr ? new Date(dueDateStr) : null,
       assignedToId: assignedToId || user.id,
     }).returning()
