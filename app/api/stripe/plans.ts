@@ -6,16 +6,12 @@ const defaultPlans = [
   {
     id: "FREE",
     priceId: undefined,
-    todoLimit: 10,
-    todoDaysBehind: 0,
-    todoDaysAhead: 30,
+    messageLimit: 10,
   },
   {
     id: "PRO",
     priceId: "price_1R3aDvLxBMFKq9DZn1vkvwwW",
-    todoLimit: 1000,
-    todoDaysBehind: Number.POSITIVE_INFINITY,
-    todoDaysAhead: Number.POSITIVE_INFINITY,
+    messageLimit: 100,
   },
 ]
 
@@ -33,16 +29,12 @@ export const plansFlag = flag({
         {
           id: "FREE",
           priceId: undefined,
-          todoLimit: 1_000_000,
-          todoDaysBehind: Number.POSITIVE_INFINITY,
-          todoDaysAhead: Number.POSITIVE_INFINITY,
+          messageLimit: 100,
         },
         {
           id: "PRO",
           priceId: "price_1R3aDvLxBMFKq9DZn1vkvwwW",
-          todoLimit: 1_000_000,
-          todoDaysBehind: Number.POSITIVE_INFINITY,
-          todoDaysAhead: Number.POSITIVE_INFINITY,
+          messageLimit: 1000
         },
       ],
     },

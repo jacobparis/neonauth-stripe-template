@@ -12,6 +12,7 @@ import { generateObject } from 'ai'
 import { myProvider } from '@/lib/ai/providers'
 import { format } from 'date-fns'
 import { z } from 'zod'
+import { checkMessageRateLimit } from '@/lib/rate-limit'
 
 export async function generateTodoFromUserMessage({
   prompt,
@@ -118,18 +119,42 @@ export async function getUsersWithProfiles() {
 }
 
 export async function addTodo(formData: FormData) {
-  const title = formData.get("text") as string
-  const description = formData.get("description") as string | null
-  const dueDateStr = formData.get("dueDate") as string | null
-  const assignedToId = formData.get("assignedToId") as string | null
-
-  if (!title?.trim()) {
-    return { error: "Todo title is required" }
+  const user = await stackServerApp.getUser()
+  if (!user) {
+    throw new Error('Not authenticated')
   }
 
-  const user = await stackServerApp.getUser({ or: "redirect" })
-  if (!user) {
-    return { error: "User not found" }
+  // Check rate limit first
+  const rateLimitResult = await checkMessageRateLimit(user.id)
+  if (!rateLimitResult.success) {
+    const hoursUntilReset = Math.ceil(
+      (rateLimitResult.reset - Date.now()) / (1000 * 60 * 60),
+    )
+    throw new Error(
+      `Rate limit exceeded. You have ${rateLimitResult.remaining} messages remaining today. Resets in ${hoursUntilReset} hours.`,
+    )
+  }
+
+  const text = formData.get('text') as string
+  const assignedToId = formData.get('assignedToId') as string | null
+  const dueDateStr = formData.get('dueDate') as string | null
+
+  if (!text || typeof text !== 'string') {
+    throw new Error('Text is required')
+  }
+
+  let dueDate: Date | null = null
+  if (dueDateStr && dueDateStr.trim()) {
+    dueDate = new Date(dueDateStr)
+    if (isNaN(dueDate.getTime())) {
+      dueDate = null
+    }
+  }
+
+  const description = formData.get("description") as string | null
+
+  if (!text?.trim()) {
+    return { error: "Todo title is required" }
   }
 
   try {
@@ -153,9 +178,9 @@ export async function addTodo(formData: FormData) {
     }
 
     const [todo] = await db.insert(todos).values({
-      title,
+      title: text,
       description: description?.trim() || null,
-      dueDate: dueDateStr ? new Date(dueDateStr) : null,
+      dueDate: dueDate,
       assignedToId: assignedToId || user.id,
     }).returning()
 
@@ -176,7 +201,7 @@ export async function addTodo(formData: FormData) {
     await createNotification({
       userId: user.id,
       type: "info",
-      message: `New todo created: ${title}`,
+      message: `New todo created: ${text}`,
       taskId: todo.id,
     })
 
@@ -417,16 +442,39 @@ export async function getComments(todoId: number) {
 }
 
 export async function addComment(formData: FormData) {
-  const content = formData.get("content") as string
-  const todoId = parseInt(formData.get("todoId") as string)
-  const isAiGenerated = formData.get("isAiGenerated") === "true"
-
-  if (!content?.trim()) {
-    return { error: "Comment content is required" }
+  const user = await stackServerApp.getUser()
+  if (!user) {
+    throw new Error('Not authenticated')
   }
 
-  if (isNaN(todoId)) {
-    return { error: "Invalid todo ID" }
+  const content = formData.get('content')
+  const todoId = formData.get('todoId')
+  const isAiGenerated = formData.get('isAiGenerated') === 'true'
+
+  if (!content || typeof content !== 'string') {
+    throw new Error('Content is required')
+  }
+
+  if (!todoId || typeof todoId !== 'string') {
+    throw new Error('Todo ID is required')
+  }
+
+  const todoIdNum = parseInt(todoId, 10)
+  if (isNaN(todoIdNum)) {
+    throw new Error('Invalid todo ID')
+  }
+
+  // Only check rate limit for human-generated comments
+  if (!isAiGenerated) {
+    const rateLimitResult = await checkMessageRateLimit(user.id)
+    if (!rateLimitResult.success) {
+      const hoursUntilReset = Math.ceil(
+        (rateLimitResult.reset - Date.now()) / (1000 * 60 * 60),
+      )
+      throw new Error(
+        `Rate limit exceeded. You have ${rateLimitResult.remaining} messages remaining today. Resets in ${hoursUntilReset} hours.`,
+      )
+    }
   }
 
   let userId: string
@@ -454,11 +502,6 @@ export async function addComment(formData: FormData) {
     })
   } else {
     // For regular comments, use the authenticated user
-    const user = await stackServerApp.getUser()
-    if (!user) {
-      return { error: "User not found" }
-    }
-    
     userId = user.id
     userName = user.displayName
 
@@ -482,26 +525,26 @@ export async function addComment(formData: FormData) {
   try {
     const [comment] = await db.insert(comments).values({
       content: content.trim(),
-      todoId,
+      todoId: todoIdNum,
       userId,
     }).returning()
 
     // Get the todo details for notifications
     const todo = await db.query.todos.findFirst({
-      where: eq(todos.id, todoId)
+      where: eq(todos.id, todoIdNum)
     })
 
     if (todo && !isAiGenerated) {
       // Only notify watchers for human comments, not AI responses
       // to avoid notification spam
       await notifyWatchers({
-        taskId: todoId,
+        taskId: todoIdNum,
         message: `${userName || 'Someone'} commented on "${todo.title}"`,
         type: "info"
       })
     }
 
-    revalidatePath(`/app/todos/${todoId}`)
+    revalidatePath(`/app/todos/${todoIdNum}`)
     return { success: true }
   } catch (error) {
     console.error("Failed to add comment:", error)

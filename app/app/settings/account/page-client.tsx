@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   AlertTriangle,
   Mail,
@@ -11,9 +11,9 @@ import {
   EyeOff,
   TrashIcon,
   Loader2,
-} from "lucide-react"
-import { startTransition, useOptimistic, useRef, useState } from "react"
-import { useUser } from "@stackframe/stack"
+} from 'lucide-react'
+import { startTransition, useOptimistic, useRef, useState } from 'react'
+import { useUser } from '@stackframe/stack'
 import {
   updatePassword,
   deleteAccount,
@@ -21,9 +21,9 @@ import {
   deleteContactChannel,
   makePrimaryContactChannel,
   sendVerificationEmail,
-} from "../profile/actions"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
+} from '../profile/actions'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -33,8 +33,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogCancel,
-} from "@/components/ui/alert-dialog"
-import { SubscriptionCard } from "@/app/components/subscription-card"
+} from '@/components/ui/alert-dialog'
+import { SubscriptionCard } from '@/app/components/subscription-card'
 
 interface ContactChannel {
   id: string
@@ -61,9 +61,12 @@ interface AccountPageClientProps {
   } | null
   plan: {
     id: string
-    todoLimit: number
-    todoDaysBehind: number | typeof Number.POSITIVE_INFINITY
-    todoDaysAhead: number | typeof Number.POSITIVE_INFINITY
+    priceId: string | undefined
+    messageLimit: number
+  }
+  rateLimitStatus: {
+    remaining: number
+    reset: number
   }
   userId: string
   email: string
@@ -74,11 +77,12 @@ export function AccountPageClient({
   contactChannels: serverContactChannels,
   subscription,
   plan,
+  rateLimitStatus,
   userId,
   email,
   name,
 }: AccountPageClientProps) {
-  const user = useUser({ or: "redirect" })
+  const user = useUser({ or: 'redirect' })
   const formRef = useRef<HTMLFormElement>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null)
@@ -98,26 +102,26 @@ export function AccountPageClient({
     (
       current,
       event:
-        | { type: "addEmail"; email: string }
-        | { type: "removeEmail"; id: string }
-        | { type: "makePrimary"; id: string },
+        | { type: 'addEmail'; email: string }
+        | { type: 'removeEmail'; id: string }
+        | { type: 'makePrimary'; id: string },
     ) => {
       switch (event.type) {
-        case "addEmail":
+        case 'addEmail':
           return [
             ...current,
             {
               id: crypto.randomUUID(),
               value: event.email,
-              type: "email",
+              type: 'email',
               isPrimary: false,
               isVerified: false,
               usedForAuth: false,
             },
           ]
-        case "removeEmail":
+        case 'removeEmail':
           return current.filter((channel) => channel.id !== event.id)
-        case "makePrimary":
+        case 'makePrimary':
           return current.map((channel) => {
             return {
               ...channel,
@@ -139,6 +143,7 @@ export function AccountPageClient({
           name={name}
           plan={plan}
           subscription={subscription}
+          rateLimitStatus={rateLimitStatus}
         />
       </div>
 
@@ -171,7 +176,7 @@ export function AccountPageClient({
                         <form
                           action={async (formData) => {
                             sendChannelEvent({
-                              type: "makePrimary",
+                              type: 'makePrimary',
                               id: channel.id,
                             })
                             await makePrimaryContactChannel(formData)
@@ -199,7 +204,7 @@ export function AccountPageClient({
                       <form
                         action={async (formData) => {
                           sendChannelEvent({
-                            type: "makePrimary",
+                            type: 'makePrimary',
                             id: channel.id,
                           })
                           await makePrimaryContactChannel(formData)
@@ -224,7 +229,7 @@ export function AccountPageClient({
                         setPendingVerificationId(channel.id)
                         setVerificationErrors((prev) => ({
                           ...prev,
-                          [channel.id]: "",
+                          [channel.id]: '',
                         }))
                         startTransition(async () => {
                           try {
@@ -236,7 +241,7 @@ export function AccountPageClient({
                               [channel.id]:
                                 error instanceof Error
                                   ? error.message
-                                  : "Failed to send verification email",
+                                  : 'Failed to send verification email',
                             }))
                           }
                         })
@@ -296,7 +301,7 @@ export function AccountPageClient({
                     <form
                       action={async (formData) => {
                         sendChannelEvent({
-                          type: "removeEmail",
+                          type: 'removeEmail',
                           id: channel.id,
                         })
                         await deleteContactChannel(formData)
@@ -323,8 +328,8 @@ export function AccountPageClient({
             ref={formRef}
             action={async (formData) => {
               sendChannelEvent({
-                type: "addEmail",
-                email: formData.get("email") as string,
+                type: 'addEmail',
+                email: formData.get('email') as string,
               })
               formRef.current?.reset()
               await addContactChannel(formData)
@@ -366,10 +371,10 @@ export function AccountPageClient({
               try {
                 const result = await updatePassword(formData)
                 if (result.success) {
-                  setPasswordSuccess("Password updated successfully")
+                  setPasswordSuccess('Password updated successfully')
                   // Reset form fields
                   const form = document.getElementById(
-                    "password-form",
+                    'password-form',
                   ) as HTMLFormElement
                   if (form) form.reset()
                 } else {
@@ -379,7 +384,7 @@ export function AccountPageClient({
                 setPasswordError(
                   error instanceof Error
                     ? error.message
-                    : "An unexpected error occurred",
+                    : 'An unexpected error occurred',
                 )
               } finally {
                 setIsUpdatingPassword(false)
@@ -396,7 +401,7 @@ export function AccountPageClient({
                     <Input
                       id="current-password"
                       name="currentPassword"
-                      type={showCurrentPassword ? "text" : "password"}
+                      type={showCurrentPassword ? 'text' : 'password'}
                       placeholder="Enter current password"
                       onFocus={() => {
                         setPasswordError(null)
@@ -422,8 +427,8 @@ export function AccountPageClient({
                       )}
                       <span className="sr-only">
                         {showCurrentPassword
-                          ? "Hide password"
-                          : "Show password"}
+                          ? 'Hide password'
+                          : 'Show password'}
                       </span>
                     </Button>
                   </div>
@@ -436,7 +441,7 @@ export function AccountPageClient({
                   <Input
                     id="new-password"
                     name="newPassword"
-                    type={showNewPassword ? "text" : "password"}
+                    type={showNewPassword ? 'text' : 'password'}
                     placeholder="Enter new password"
                     onFocus={() => {
                       setPasswordError(null)
@@ -459,7 +464,7 @@ export function AccountPageClient({
                       <Eye className="h-4 w-4 text-muted-foreground" />
                     )}
                     <span className="sr-only">
-                      {showNewPassword ? "Hide password" : "Show password"}
+                      {showNewPassword ? 'Hide password' : 'Show password'}
                     </span>
                   </Button>
                 </div>
@@ -497,9 +502,9 @@ export function AccountPageClient({
                       Updating...
                     </>
                   ) : user.hasPassword ? (
-                    "Update Password"
+                    'Update Password'
                   ) : (
-                    "Set Password"
+                    'Set Password'
                   )}
                 </Button>
               </div>

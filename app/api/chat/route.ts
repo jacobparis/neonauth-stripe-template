@@ -12,6 +12,7 @@ import {
   toggleTodoCompletion, 
   assignTodo 
 } from '@/lib/ai/tools/todo-actions'
+import { checkMessageRateLimit } from '@/lib/rate-limit'
 
 export const maxDuration = 60
 
@@ -22,6 +23,20 @@ export async function POST(req: NextRequest) {
     const user = await stackServerApp.getUser()
     if (!user) {
       return new Response('Unauthorized', { status: 401 })
+    }
+
+    // Check rate limit for chat messages (counts as 1 message)
+    const { success, remaining, reset } = await checkMessageRateLimit(user.id)
+    if (!success) {
+      return new Response(
+        JSON.stringify({ 
+          error: `Rate limit exceeded. You have ${remaining} messages remaining today. Resets in ${Math.ceil((reset - Date.now()) / (1000 * 60 * 60))} hours.`
+        }), 
+        { 
+          status: 429,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      )
     }
 
     // Fetch full todo details and users for richer context

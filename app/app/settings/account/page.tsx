@@ -2,16 +2,21 @@ import { stackServerApp } from '@/stack'
 import { AccountPageClient } from './page-client'
 import { getStripeCustomerId, getStripeCustomer } from '@/lib/stripe'
 import { getStripePlan } from '@/app/api/stripe/plans'
+import { getRateLimitStatus } from '@/lib/rate-limit'
 
 export default async function AccountPage() {
   const user = await stackServerApp.getUser({ or: 'redirect' })
 
   const contactChannels = await user?.listContactChannels()
 
-  // Get subscription data
-  const customerId = await getStripeCustomerId(user.id)
+  // Get subscription data and rate limit status
+  const [customerId, plan, rateLimitStatus] = await Promise.all([
+    getStripeCustomerId(user.id),
+    getStripePlan(user.id),
+    getRateLimitStatus(user.id),
+  ])
+
   const subscription = customerId ? await getStripeCustomer(customerId) : null
-  const plan = await getStripePlan(user.id)
 
   return (
     <div className="container max-w-4xl mx-auto py-8 px-4">
@@ -29,6 +34,7 @@ export default async function AccountPage() {
         }
         subscription={subscription}
         plan={plan}
+        rateLimitStatus={rateLimitStatus}
         userId={user.id}
         email={user.primaryEmail || ''}
         name={user.displayName}

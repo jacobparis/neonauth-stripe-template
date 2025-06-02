@@ -1,6 +1,8 @@
 import { getTodo, getUsersWithProfiles } from '@/lib/actions'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
+import { stackServerApp } from '@/stack'
+import { getRateLimitStatus } from '@/lib/rate-limit'
 
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
@@ -10,7 +12,6 @@ import { TodoStateProvider } from './todo-state-context'
 import { TodoItemPageClient } from './page-client'
 import { WatchButton } from './watch-button'
 import { EnhancedActivitySection } from './enhanced-activity-section'
-import { ActivitySection } from '@/app/app/todos/[id]/activity-section'
 
 export default async function TodoItemPage({
   params,
@@ -25,9 +26,12 @@ export default async function TodoItemPage({
   }
 
   try {
-    const [todo, users] = await Promise.all([
+    const user = await stackServerApp.getUser({ or: 'redirect' })
+
+    const [todo, users, rateLimitStatus] = await Promise.all([
       getTodo(todoId),
       getUsersWithProfiles(),
+      getRateLimitStatus(user.id),
     ])
 
     if (!todo) {
@@ -60,10 +64,6 @@ export default async function TodoItemPage({
             </div>
 
             <div className="mt-6">
-              <ActivitySection todo={todo} />
-            </div>
-
-            <div className="mt-6">
               <Suspense
                 fallback={
                   <div className="text-sm text-gray-500">
@@ -71,7 +71,10 @@ export default async function TodoItemPage({
                   </div>
                 }
               >
-                <EnhancedActivitySection todo={todo} />
+                <EnhancedActivitySection
+                  todo={todo}
+                  rateLimitStatus={rateLimitStatus}
+                />
               </Suspense>
             </div>
           </div>

@@ -21,6 +21,7 @@ import {
   Zap,
   MoreVertical,
   Loader2,
+  MessageSquare,
 } from 'lucide-react'
 import type { Todo, User } from '@/drizzle/schema'
 import {
@@ -39,7 +40,6 @@ import {
 import Link from 'next/link'
 import { UserSelector } from './user-selector'
 import { UserAvatar } from './user-avatar'
-import { Progress } from '@/components/ui/progress'
 import { groupTodosByDueDate } from './utils'
 import { Textarea } from '@/components/ui/textarea'
 
@@ -60,11 +60,16 @@ function AddTodoForm({
   setPendingEdits,
   users,
   currentUserId,
+  rateLimitStatus,
 }: {
   onClose: () => void
   setPendingEdits: React.Dispatch<React.SetStateAction<PendingEdit[]>>
   users: UserWithProfile[]
   currentUserId: string
+  rateLimitStatus: {
+    remaining: number
+    reset: number
+  }
 }) {
   const [selectedDueDate, setSelectedDueDate] = useState<Date | undefined>(
     undefined,
@@ -84,12 +89,15 @@ function AddTodoForm({
         body: JSON.stringify({ prompt }),
       })
 
-      if (!response.ok) throw new Error('Failed to generate todo')
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to generate todo')
+      }
 
       return await response.json()
     } catch (error) {
       console.error('Error generating todo:', error)
-      return null
+      throw error
     }
   }
 
@@ -144,6 +152,7 @@ function AddTodoForm({
       setSelectedDueDate(undefined)
       setSelectedUserId(currentUserId)
       onClose()
+    } catch (error) {
     } finally {
       setIsGenerating(false)
     }
@@ -364,14 +373,17 @@ const TodoItem = memo(function TodoItem({
 
 export function TodosPageClient({
   todos,
-  todoLimit,
   userId,
   users,
+  rateLimitStatus,
 }: {
   todos: Todo[]
-  todoLimit: number
   userId: string
   users: UserWithProfile[]
+  rateLimitStatus: {
+    remaining: number
+    reset: number
+  }
 }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTodoIds, setSelectedTodoIds] = useState(
@@ -814,20 +826,24 @@ export function TodosPageClient({
             setPendingEdits={setPendingEdits}
             users={users}
             currentUserId={userId}
+            rateLimitStatus={rateLimitStatus}
           />
 
-          {/* Minimal Active Deadlines Counter */}
+          {/* Message Rate Limit Counter */}
           <div className="flex items-center justify-between text-xs text-muted-foreground mt-2 px-2">
-            <span>
-              {displayedTodos.length}/{todoLimit} todos
-            </span>
-            {displayedTodos.length >= todoLimit ? (
+            <div className="flex items-center gap-1">
+              <MessageSquare className="h-3 w-3" />
+              <span>{rateLimitStatus.remaining} messages remaining today</span>
+            </div>
+            {rateLimitStatus.remaining === 0 ? (
               <span className="text-red-500 dark:text-red-400">
-                Upgrade to add more
+                Resets in{' '}
+                {Math.ceil(
+                  (rateLimitStatus.reset - Date.now()) / (1000 * 60 * 60),
+                )}
+                h
               </span>
-            ) : (
-              <span>{todoLimit - displayedTodos.length} remaining</span>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

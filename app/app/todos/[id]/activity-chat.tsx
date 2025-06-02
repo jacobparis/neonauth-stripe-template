@@ -54,6 +54,8 @@ export function ActivityChat({
   initialComments,
   user,
   todo,
+  stateHandlers,
+  rateLimitStatus,
 }: {
   todoId: number
   initialComments: CommentWithUser[]
@@ -67,14 +69,21 @@ export function ActivityChat({
     title: string
     description: string | null
   }
+  stateHandlers?: any
+  rateLimitStatus: {
+    remaining: number
+    reset: number
+  }
 }) {
   const [isPending, startTransition] = useTransition()
   const [inputValue, setInputValue] = useState('')
   const [isAiThinking, setIsAiThinking] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [rateLimitError, setRateLimitError] = useState<string | null>(null)
 
   // Get state handlers from context
-  const stateHandlers = useTodoState()
+  const contextStateHandlers = useTodoState()
+  const activeStateHandlers = stateHandlers || contextStateHandlers
 
   // Auto-scroll functionality
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -288,7 +297,7 @@ export function ActivityChat({
       switch (toolCall.toolName) {
         case 'updateTodoTitle':
           const titleArgs = toolCall.args as { todoId: number; title: string }
-          stateHandlers.setTitle(titleArgs.title)
+          activeStateHandlers.setTitle(titleArgs.title)
           // Add activity comment for AI title change
           addAiActivityComment(`Title changed to "${titleArgs.title}"`)
           break
@@ -297,7 +306,7 @@ export function ActivityChat({
             todoId: number
             description: string
           }
-          stateHandlers.setDescription(descArgs.description)
+          activeStateHandlers.setDescription(descArgs.description)
           // Add activity comment for AI description change
           if (descArgs.description) {
             addAiActivityComment(`Description updated`)
@@ -310,7 +319,7 @@ export function ActivityChat({
           const dueDate = dateArgs.dueDate
             ? new Date(dateArgs.dueDate)
             : undefined
-          stateHandlers.setDate(dueDate)
+          activeStateHandlers.setDate(dueDate)
           // Add activity comment for AI due date change
           const dueDateComment = dueDate
             ? `Due date set to ${dueDate.toLocaleDateString()}`
@@ -325,11 +334,11 @@ export function ActivityChat({
           let newCompletedState: boolean
           if (completionArgs.completed !== undefined) {
             newCompletedState = completionArgs.completed
-            stateHandlers.setCompleted(completionArgs.completed)
+            activeStateHandlers.setCompleted(completionArgs.completed)
           } else {
             // If no specific status provided, toggle current state
-            newCompletedState = !stateHandlers.completed
-            stateHandlers.setCompleted(newCompletedState)
+            newCompletedState = !activeStateHandlers.completed
+            activeStateHandlers.setCompleted(newCompletedState)
           }
           // Add activity comment for AI completion change
           const completionComment = newCompletedState
@@ -341,7 +350,7 @@ export function ActivityChat({
           const assignArgs = toolCall.args as { todoId: number; userId: string }
           const userId =
             assignArgs.userId === 'unassign' ? null : assignArgs.userId
-          stateHandlers.setAssignedUserId(userId)
+          activeStateHandlers.setAssignedUserId(userId)
           // Add activity comment for AI assignment change
           if (userId) {
             addAiActivityComment(`Assigned to user`)
@@ -466,6 +475,18 @@ export function ActivityChat({
   const handleSubmit = async () => {
     if (!inputValue.trim() || isSubmitting) return
 
+    // Check rate limit before proceeding
+    if (rateLimitStatus.remaining <= 0) {
+      const hoursUntilReset = Math.ceil(
+        (rateLimitStatus.reset - Date.now()) / (1000 * 60 * 60),
+      )
+      setRateLimitError(
+        `Rate limit exceeded. You have 0 messages remaining today. Resets in ${hoursUntilReset} hours.`,
+      )
+      return
+    }
+
+    setRateLimitError(null)
     setIsSubmitting(true)
 
     try {
@@ -504,6 +525,10 @@ export function ActivityChat({
       setInputValue('')
       localStorage.removeItem(`todo-chat-input-${todoId}`)
       resetHeight()
+    } catch (error) {
+      if (error instanceof Error) {
+        setRateLimitError(error.message)
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -761,6 +786,12 @@ export function ActivityChat({
               </div>
             )}
 
+            {rateLimitError && (
+              <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{rateLimitError}</p>
+              </div>
+            )}
+
             <div className="relative">
               <Textarea
                 value={inputValue}
@@ -801,7 +832,7 @@ export function ActivityChat({
               {/* Help Text */}
               <div className="absolute bottom-0 left-0 p-2">
                 <div className="text-xs text-muted-foreground">
-                  💡 AI assistant with full task context
+                  {rateLimitStatus.remaining} messages today
                 </div>
               </div>
             </div>
