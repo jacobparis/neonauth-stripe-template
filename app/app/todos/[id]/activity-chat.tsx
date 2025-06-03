@@ -25,6 +25,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { nanoid } from 'nanoid'
 
 type CommentWithUser = Comment & {
   user: {
@@ -36,7 +37,7 @@ type CommentWithUser = Comment & {
 }
 
 type ActivityMessage = {
-  id: string | number
+  id: string
   type: 'comment' | 'ai' | 'user-message'
   content: string
   createdAt: Date
@@ -57,7 +58,7 @@ export function ActivityChat({
   stateHandlers,
   rateLimitStatus,
 }: {
-  todoId: number
+  todoId: string
   initialComments: CommentWithUser[]
   user: {
     id: string
@@ -203,12 +204,12 @@ export function ActivityChat({
     try {
       const formData = new FormData()
       formData.append('content', content)
-      formData.append('todoId', todoId.toString())
+      formData.append('todoId', todoId)
       formData.append('isAiGenerated', 'true')
 
       // Add optimistically to the comments list
       const optimisticComment: CommentWithUser = {
-        id: Date.now() + Math.random(), // Ensure unique ID
+        id: nanoid(8),
         content,
         todoId,
         userId: 'ai-assistant',
@@ -234,12 +235,12 @@ export function ActivityChat({
     try {
       const formData = new FormData()
       formData.append('content', `<thinking>${reasoning}</thinking>`)
-      formData.append('todoId', todoId.toString())
+      formData.append('todoId', todoId)
       formData.append('isAiGenerated', 'true')
 
       // Add optimistically to the comments list
       const optimisticComment: CommentWithUser = {
-        id: Date.now() + Math.random(), // Ensure unique ID
+        id: nanoid(8),
         content: `<thinking>${reasoning}</thinking>`,
         todoId,
         userId: 'ai-assistant',
@@ -296,14 +297,14 @@ export function ActivityChat({
       // Handle tool calls to trigger immediate state updates
       switch (toolCall.toolName) {
         case 'updateTodoTitle':
-          const titleArgs = toolCall.args as { todoId: number; title: string }
+          const titleArgs = toolCall.args as { todoId: string; title: string }
           activeStateHandlers.setTitle(titleArgs.title)
           // Add activity comment for AI title change
           addAiActivityComment(`Title changed to "${titleArgs.title}"`)
           break
         case 'updateTodoDescription':
           const descArgs = toolCall.args as {
-            todoId: number
+            todoId: string
             description: string
           }
           activeStateHandlers.setDescription(descArgs.description)
@@ -315,7 +316,7 @@ export function ActivityChat({
           }
           break
         case 'updateTodoDueDate':
-          const dateArgs = toolCall.args as { todoId: number; dueDate?: string }
+          const dateArgs = toolCall.args as { todoId: string; dueDate?: string }
           const dueDate = dateArgs.dueDate
             ? new Date(dateArgs.dueDate)
             : undefined
@@ -328,7 +329,7 @@ export function ActivityChat({
           break
         case 'toggleTodoCompletion':
           const completionArgs = toolCall.args as {
-            todoId: number
+            todoId: string
             completed?: boolean
           }
           let newCompletedState: boolean
@@ -347,7 +348,7 @@ export function ActivityChat({
           addAiActivityComment(completionComment)
           break
         case 'assignTodo':
-          const assignArgs = toolCall.args as { todoId: number; userId: string }
+          const assignArgs = toolCall.args as { todoId: string; userId: string }
           const userId =
             assignArgs.userId === 'unassign' ? null : assignArgs.userId
           activeStateHandlers.setAssignedUserId(userId)
@@ -375,12 +376,12 @@ export function ActivityChat({
           if (mainContent && mainContent.trim()) {
             const formData = new FormData()
             formData.append('content', mainContent)
-            formData.append('todoId', todoId.toString())
+            formData.append('todoId', todoId)
             formData.append('isAiGenerated', 'true')
 
             // Add optimistically to the comments list
             const optimisticComment: CommentWithUser = {
-              id: Date.now(),
+              id: nanoid(8),
               content: mainContent,
               todoId,
               userId: 'ai-assistant',
@@ -493,11 +494,11 @@ export function ActivityChat({
       // First, save the user message as a comment (following ai-chatbot pattern)
       const userFormData = new FormData()
       userFormData.append('content', inputValue.trim())
-      userFormData.append('todoId', todoId.toString())
+      userFormData.append('todoId', todoId)
 
-      // Add optimistic user comment
-      const optimisticUserComment: CommentWithUser = {
-        id: Date.now(),
+      // Add optimistically to the comments list
+      const optimisticComment: CommentWithUser = {
+        id: nanoid(8),
         content: inputValue.trim(),
         todoId,
         userId: user.id,
@@ -505,13 +506,13 @@ export function ActivityChat({
         updatedAt: new Date(),
         user: {
           id: user.id,
-          email: user.primaryEmail || null,
-          name: user.displayName || null,
+          email: user.primaryEmail,
+          name: user.displayName,
           image: null,
         },
       }
 
-      addOptimisticComment(optimisticUserComment)
+      addOptimisticComment(optimisticComment)
 
       // Save user comment to database
       await addComment(userFormData)

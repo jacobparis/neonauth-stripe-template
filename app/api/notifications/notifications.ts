@@ -8,7 +8,7 @@ export const NotificationSchema = z.object({
   userId: z.string(),
   type: z.string(),
   message: z.string(),
-  taskId: z.number(),
+  taskId: z.string(),
   createdAt: z.string(),
   read: z.boolean()
 })
@@ -17,12 +17,12 @@ type Notification = z.infer<typeof NotificationSchema>
 export type CreateNotificationInput = Omit<Notification, 'id' | 'createdAt' | 'read'>
 
 // Helper to get the watchers key for a task
-function getWatchersKey(taskId: number) {
+function getWatchersKey(taskId: string) {
   return `watchers:${taskId}`
 }
 
 interface WatchTaskParams {
-  taskId: number
+  taskId: string
   userId: string
 }
 
@@ -39,7 +39,7 @@ export async function unwatchTask({ taskId, userId }: WatchTaskParams) {
 }
 
 interface GetTaskWatchersParams {
-  taskId: number
+  taskId: string
 }
 
 // Get all watchers for a task
@@ -49,7 +49,7 @@ export async function getTaskWatchers({ taskId }: GetTaskWatchersParams) {
 }
 
 interface NotifyWatchersParams {
-  taskId: number
+  taskId: string
   message: string
   type?: NotificationType
 }

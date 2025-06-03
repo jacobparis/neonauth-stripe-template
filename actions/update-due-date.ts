@@ -6,15 +6,16 @@ import { eq, inArray, and } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import { stackServerApp } from "@/stack"
 import { createNotification } from '@/app/api/notifications/notifications'
+import { nanoid } from 'nanoid'
 
 // This function will be called by vercel-queue without user context
 // or directly with auth context
 export async function processUpdateDueDate(
-  ids: number[],
+  ids: string[],
   args: { dueDate: Date | null; userId?: string }
 ) {
-  // Filter out invalid IDs (optimistic todos)
-  const validIds = ids.filter((id) => id > 0)
+  // Filter out invalid IDs and optimistic todos (temp- prefix)
+  const validIds = ids.filter((id) => id && id.length > 0 && !id.startsWith('temp-'))
   if (validIds.length === 0) return
 
   // When called via vercel-queue, use the passed userId
@@ -41,6 +42,7 @@ export async function processUpdateDueDate(
           : "Due date removed"
 
         await db.insert(comments).values({
+          id: nanoid(8),
           content: dueDateComment,
           todoId: currentTodo.id,
           userId: args.userId,
@@ -90,6 +92,7 @@ export async function processUpdateDueDate(
           : "Due date removed"
 
         await db.insert(comments).values({
+          id: nanoid(8),
           content: dueDateComment,
           todoId: currentTodo.id,
           userId: user.id,
@@ -130,9 +133,9 @@ export async function updateDueDate(formData: FormData) {
   const dueDate = dueDateStr ? new Date(dueDateStr) : null
 
   // Get the IDs to update
-  let todoIds: number[]
+  let todoIds: string[]
   if (id) {
-    todoIds = [Number(id)]
+    todoIds = [id as string]
   } else if (ids) {
     todoIds = JSON.parse(ids as string)
   } else {
@@ -149,7 +152,7 @@ export async function updateDueDate(formData: FormData) {
   }
 }
 
-export async function bulkUpdateDueDate(todoIds: number[], dueDate: Date | null) {
+export async function bulkUpdateDueDate(todoIds: string[], dueDate: Date | null) {
   if (!todoIds.length) {
     return { success: true }
   }

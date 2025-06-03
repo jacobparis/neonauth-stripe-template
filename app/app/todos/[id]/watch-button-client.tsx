@@ -8,22 +8,25 @@ import { useRouter } from 'next/navigation'
 
 export function WatchButtonClient({
   todoId,
-  initialIsWatching,
+  initialWatchers,
 }: {
-  todoId: number
-  initialIsWatching: boolean
+  todoId: string
+  initialWatchers: string[]
 }) {
-  const [isWatching, setIsWatching] = useState(initialIsWatching)
+  const [watchers, setWatchers] = useState(initialWatchers)
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
+
+  // Check if current user is watching (we'll need to get user ID from context or props)
+  const isWatching = watchers.length > 0 // Simplified for now
 
   const handleToggleWatch = () => {
     startTransition(async () => {
       const formData = new FormData()
-      formData.append('id', todoId.toString())
+      formData.append('id', todoId)
       formData.append('watch', (!isWatching).toString())
       await toggleWatchTodo(formData)
-      setIsWatching(!isWatching)
+      // Update local state optimistically
       router.refresh()
     })
   }

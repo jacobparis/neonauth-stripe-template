@@ -9,7 +9,7 @@ export async function EnhancedActivitySection({
   rateLimitStatus,
 }: {
   todo: {
-    id: number
+    id: string
     title: string
     description: string | null
     createdAt: Date

@@ -19,9 +19,9 @@ export default async function TodoItemPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const todoId = parseInt(id, 10)
+  const todoId = id
 
-  if (isNaN(todoId)) {
+  if (!todoId || typeof todoId !== 'string') {
     notFound()
   }
 

@@ -4,11 +4,12 @@ import { db } from "@/lib/db"
 import { todos } from "@/drizzle/schema"
 import { revalidatePath } from "next/cache"
 import { stackServerApp } from "@/stack"
+import { nanoid } from 'nanoid'
 
 export async function createSampleTodos() {
   const user = await stackServerApp.getUser()
   if (!user) {
-    return { success: false, error: "Not authenticated" }
+    throw new Error("Not authenticated")
   }
 
   const sampleTodos = [
@@ -222,9 +223,11 @@ export async function createSampleTodos() {
   ]
 
   await db.insert(todos).values(sampleTodos.map(([date, title]) => ({
+    id: nanoid(8),
     title,
     dueDate: new Date(date),
     completed: false,
+    userId: user.id,
   })))
   
   revalidatePath("/app/todos")

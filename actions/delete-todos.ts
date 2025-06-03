@@ -9,9 +9,9 @@ import { createNotification } from '@/app/api/notifications/notifications'
 
 // This function will be called by vercel-queue without user context
 // or directly with auth context
-export async function processDeleteTodos(ids: number[], userId?: string) {
-  // Filter out invalid IDs (optimistic todos)
-  const validIds = ids.filter((id) => id > 0)
+export async function processDeleteTodos(ids: string[], userId?: string) {
+  // Filter out invalid IDs and optimistic todos (temp- prefix)
+  const validIds = ids.filter((id) => id && id.length > 0 && !id.startsWith('temp-'))
   if (validIds.length === 0) return
 
   // When called via vercel-queue, use the passed userId 
@@ -72,7 +72,7 @@ export async function processDeleteTodos(ids: number[], userId?: string) {
 }
 
 // Public action that handles both single and multiple deletes
-export async function deleteTodo(ids: number | number[]) {
+export async function deleteTodo(ids: string | string[]) {
   const user = await stackServerApp.getUser()
   if (!user) {
     throw new Error("Not authenticated")

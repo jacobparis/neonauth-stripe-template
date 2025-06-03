@@ -8,13 +8,14 @@ import { createNotification } from '@/app/api/notifications/notifications'
 import { generateObject } from 'ai'
 import { getAI } from '@/lib/ai'
 import { z } from 'zod'
+import { nanoid } from 'nanoid'
 
 const todoResponseSchema = z.object({
   description: z.string().describe('A detailed description (1-3 sentences) that provides context and clarifies what needs to be done'),
   questions: z.array(z.string()).describe('Relevant questions that might help clarify requirements or next steps')
 })
 
-export async function generateTodoDescription(todoId: number, title: string, userId: string) {
+export async function generateTodoDescription(todoId: string, title: string, userId: string) {
   try {
     // Get the AI provider
     const ai = getAI()
@@ -44,6 +45,7 @@ Generate a helpful response with:
     // Add questions as individual comments
     for (const question of questions) {
       await db.insert(comments).values({
+        id: nanoid(8),
         content: question,
         todoId,
         userId,

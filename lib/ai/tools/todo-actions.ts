@@ -9,7 +9,7 @@ import { notifyWatchers } from '@/app/api/notifications/notifications'
 export const updateTodoTitle = tool({
   description: 'Update the todo title to any text',
   parameters: z.object({
-    todoId: z.number().describe('The ID of the todo to update'),
+    todoId: z.string().describe('The ID of the todo to update'),
     title: z.string().describe('The new title for the todo'),
   }),
   execute: async ({ todoId, title }) => {
@@ -49,7 +49,7 @@ export const updateTodoTitle = tool({
 export const updateTodoDescription = tool({
   description: 'Update the todo description to any text',
   parameters: z.object({
-    todoId: z.number().describe('The ID of the todo to update'),
+    todoId: z.string().describe('The ID of the todo to update'),
     description: z.string().describe('The new description for the todo'),
   }),
   execute: async ({ todoId, description }) => {
@@ -89,7 +89,7 @@ export const updateTodoDescription = tool({
 export const updateTodoDueDate = tool({
   description: 'Update the todo due date to any date, past or future',
   parameters: z.object({
-    todoId: z.number().describe('The ID of the todo to update'),
+    todoId: z.string().describe('The ID of the todo to update'),
     dueDate: z.string().optional().describe('The new due date in ISO format, or empty to remove due date'),
   }),
   execute: async ({ todoId, dueDate }) => {
@@ -137,7 +137,7 @@ export const updateTodoDueDate = tool({
 export const toggleTodoCompletion = tool({
   description: 'Toggle the todo as complete, incomplete, done, not done, true or false',
   parameters: z.object({
-    todoId: z.number().describe('The ID of the todo to toggle'),
+    todoId: z.string().describe('The ID of the todo to toggle'),
     completed: z.boolean().optional().describe('Specific completion status, or leave empty to toggle'),
   }),
   execute: async ({ todoId, completed }) => {

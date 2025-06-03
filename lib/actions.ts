@@ -13,6 +13,7 @@ import { format } from 'date-fns'
 import { z } from 'zod'
 import { checkMessageRateLimit } from '@/lib/rate-limit'
 import { publishTask } from "@/app/api/queue/route"
+import { nanoid } from 'nanoid'
 
 export async function generateTodoFromUserMessage({
   prompt,
@@ -72,13 +73,13 @@ Rules:
 }
 
 export async function getTodos() {
-  const accessToken = await getAccessToken(await cookies())
-  if (!accessToken) {
+  const user = await stackServerApp.getUser()
+  if (!user) {
     throw new Error("Not authenticated")
   }
 
   try {
-    const items =  await db.select().from(todos).orderBy(todos.id)
+    const items = await db.select().from(todos).where(eq(todos.userId, user.id)).orderBy(todos.id)
     console.log(items)
     return items
   } catch (error) {
@@ -87,9 +88,14 @@ export async function getTodos() {
   }
 }
 
-export async function getTodo(id: number) {
-  if (isNaN(id)) {
+export async function getTodo(id: string) {
+  if (!id || typeof id !== 'string') {
     throw new Error("Invalid todo ID")
+  }
+
+  const user = await stackServerApp.getUser()
+  if (!user) {
+    throw new Error("Not authenticated")
   }
 
   try {
@@ -99,6 +105,11 @@ export async function getTodo(id: number) {
     
     if (!item) {
       throw new Error("Todo not found")
+    }
+
+    // Check ownership
+    if (item.userId !== user.id) {
+      throw new Error("Access denied")
     }
     
     return item
@@ -147,9 +158,11 @@ export async function addTodo(formData: FormData) {
 
   try {
     const [todo] = await db.insert(todos).values({
+      id: nanoid(8),
       title: text,
       description: description?.trim() || null,
       dueDate: dueDate,
+      userId: user.id,
     }).returning()
 
     // Add creator as a watcher
@@ -185,13 +198,13 @@ export async function addTodo(formData: FormData) {
 }
 
 export async function getTotalCreatedTodos() {
-  const accessToken = await getAccessToken(await cookies())
-  if (!accessToken) {
+  const user = await stackServerApp.getUser()
+  if (!user) {
     throw new Error("Not authenticated")
   }
 
   try {
-    const result = await db.$withAuth(accessToken).select({ count: count() }).from(todos)
+    const result = await db.select({ count: count() }).from(todos).where(eq(todos.userId, user.id))
     return result[0]?.count ?? 0
   } catch (error) {
     console.error("Failed to count todos:", error)
@@ -208,7 +221,7 @@ export async function updateTodo(formData: FormData) {
     throw new Error('Invalid todo id')
   }
 
-  const todoId = parseInt(id)
+  const todoId = id
   const user = await stackServerApp.getUser()
   if (!user) {
     throw new Error("Not authenticated")
@@ -222,6 +235,11 @@ export async function updateTodo(formData: FormData) {
 
     if (!currentTodo) {
       throw new Error("Todo not found")
+    }
+
+    // Check ownership
+    if (currentTodo.userId !== user.id) {
+      throw new Error("Access denied")
     }
 
     // Only update fields that are provided
@@ -255,6 +273,7 @@ export async function updateTodo(formData: FormData) {
       // Add activity comment for the changes
       const changeComment = changes.join(', ')
       await db.insert(comments).values({
+        id: nanoid(8),
         content: changeComment,
         todoId,
         userId: user.id,
@@ -284,13 +303,26 @@ export async function toggleWatchTodo(formData: FormData) {
     throw new Error('Invalid todo id')
   }
 
-  const todoId = parseInt(id)
+  const todoId = id
   const user = await stackServerApp.getUser()
   if (!user) {
     throw new Error("Not authenticated")
   }
 
   try {
+    // Check if user owns the todo
+    const todo = await db.query.todos.findFirst({
+      where: eq(todos.id, todoId)
+    })
+
+    if (!todo) {
+      throw new Error("Todo not found")
+    }
+
+    if (todo.userId !== user.id) {
+      throw new Error("Access denied")
+    }
+
     if (watch) {
       await watchTask({ 
         taskId: todoId, 
@@ -316,13 +348,26 @@ export async function toggleWatchTodo(formData: FormData) {
   }
 }
 
-export async function getComments(todoId: number) {
-  const accessToken = await getAccessToken(await cookies())
-  if (!accessToken) {
+export async function getComments(todoId: string) {
+  const user = await stackServerApp.getUser()
+  if (!user) {
     throw new Error("Not authenticated")
   }
 
   try {
+    // First check if user owns the todo
+    const todo = await db.query.todos.findFirst({
+      where: eq(todos.id, todoId)
+    })
+
+    if (!todo) {
+      throw new Error("Todo not found")
+    }
+
+    if (todo.userId !== user.id) {
+      throw new Error("Access denied")
+    }
+
     const commentList = await db.query.comments.findMany({
       where: eq(comments.todoId, todoId),
       with: {
@@ -356,9 +401,19 @@ export async function addComment(formData: FormData) {
     throw new Error('Todo ID is required')
   }
 
-  const todoIdNum = parseInt(todoId, 10)
-  if (isNaN(todoIdNum)) {
-    throw new Error('Invalid todo ID')
+  // Check if user owns the todo (only for human-generated comments)
+  if (!isAiGenerated) {
+    const todo = await db.query.todos.findFirst({
+      where: eq(todos.id, todoId)
+    })
+
+    if (!todo) {
+      throw new Error("Todo not found")
+    }
+
+    if (todo.userId !== user.id) {
+      throw new Error("Access denied")
+    }
   }
 
   // Only check rate limit for human-generated comments
@@ -421,27 +476,28 @@ export async function addComment(formData: FormData) {
 
   try {
     const [comment] = await db.insert(comments).values({
+      id: nanoid(8),
       content: content.trim(),
-      todoId: todoIdNum,
+      todoId: todoId,
       userId,
     }).returning()
 
     // Get the todo details for notifications
     const todo = await db.query.todos.findFirst({
-      where: eq(todos.id, todoIdNum)
+      where: eq(todos.id, todoId)
     })
 
     if (todo && !isAiGenerated) {
       // Only notify watchers for human comments, not AI responses
       // to avoid notification spam
       await notifyWatchers({
-        taskId: todoIdNum,
+        taskId: todoId,
         message: `${userName || 'Someone'} commented on "${todo.title}"`,
         type: "info"
       })
     }
 
-    revalidatePath(`/app/todos/${todoIdNum}`)
+    revalidatePath(`/app/todos/${todoId}`)
     return { success: true }
   } catch (error) {
     console.error("Failed to add comment:", error)

@@ -6,6 +6,7 @@ import { eq, inArray, and } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
 import { stackServerApp } from "@/stack"
 import { createNotification } from '@/app/api/notifications/notifications'
+import { nanoid } from 'nanoid'
 
 
 // Public action that handles both single and multiple toggles
@@ -15,7 +16,7 @@ export async function toggleTodoCompleted(formData: FormData) {
     throw new Error("Not authenticated")
   }
 
-  const ids = formData.getAll("id").map(id => Number(id))
+  const ids = formData.getAll("id").map(id => id as string)
   const completed = formData.get("completed") === "true"
 
   try {
@@ -28,9 +29,9 @@ export async function toggleTodoCompleted(formData: FormData) {
   }
 }
 
-export async function processToggleCompleted(ids: number[], payload: { completed: boolean, userId: string }) {
-  // Filter out invalid IDs (optimistic todos)
-  const validIds = ids.filter((id) => id > 0)
+export async function processToggleCompleted(ids: string[], payload: { completed: boolean, userId: string }) {
+  // Filter out invalid IDs and optimistic todos (temp- prefix)
+  const validIds = ids.filter((id) => id && id.length > 0 && !id.startsWith('temp-'))
   if (validIds.length === 0) return
 
   // Get current todos to check for changes
@@ -51,6 +52,7 @@ export async function processToggleCompleted(ids: number[], payload: { completed
       const completionComment = payload.completed ? "Marked as completed" : "Marked as incomplete"
 
       await db.insert(comments).values({
+        id: nanoid(8),
         content: completionComment,
         todoId: currentTodo.id,
         userId: payload.userId,

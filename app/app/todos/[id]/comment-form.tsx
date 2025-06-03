@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useRef } from 'react'
 
 interface CommentFormProps {
-  todoId: number
+  todoId: string
   onSubmit?: (formData: FormData) => Promise<void>
   isPending?: boolean
 }

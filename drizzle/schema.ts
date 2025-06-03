@@ -13,19 +13,20 @@ export const users_sync = pgTable("users_sync", {
 })
 
 export const todos = pgTable("todos", {
-  id: serial("id").primaryKey(),
+  id: varchar("id", { length: 255 }).primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
   completed: boolean("completed").notNull().default(false),
   dueDate: timestamp("due_date"),
+  userId: varchar("user_id", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 })
 
 export const comments = pgTable("comments", {
-  id: serial("id").primaryKey(),
+  id: varchar("id", { length: 255 }).primaryKey(),
   content: text("content").notNull(),
-  todoId: integer("todo_id").notNull(),
+  todoId: varchar("todo_id", { length: 255 }).notNull(),
   userId: varchar("user_id", { length: 255 }).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -34,10 +35,16 @@ export const comments = pgTable("comments", {
 // Define relations
 export const usersRelations = relations(users_sync, ({ many }) => ({
   comments: many(comments, { relationName: "userComments" }),
+  todos: many(todos, { relationName: "userTodos" }),
 }))
 
-export const todosRelations = relations(todos, ({ many }) => ({
+export const todosRelations = relations(todos, ({ many, one }) => ({
   comments: many(comments, { relationName: "todoComments" }),
+  user: one(users_sync, {
+    fields: [todos.userId],
+    references: [users_sync.id],
+    relationName: "userTodos",
+  }),
 }))
 
 export const commentsRelations = relations(comments, ({ one }) => ({

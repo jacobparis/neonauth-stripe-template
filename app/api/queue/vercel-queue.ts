@@ -2,9 +2,9 @@ import { processDeleteTodos } from "@/actions/delete-todos"
 import { generateTodoDescription } from "@/actions/generate-description"
 
 export type QueueTask = 
-  | { type: "deleteTodo"; key: `delete-todo-${number}`; id: number }
-  | { type: "deleteTodos"; key: `delete-todos-${string}`; ids: number[]; userId: string }
-  | { type: "generateDescription"; key: `generate-description-${number}`; todoId: number; title: string; userId: string }
+  | { type: "deleteTodo"; key: `delete-todo-${string}`; id: string }
+  | { type: "deleteTodos"; key: `delete-todos-${string}`; ids: string[]; userId: string }
+  | { type: "generateDescription"; key: `generate-description-${string}`; todoId: string; title: string; userId: string }
 
 export async function processTask(task: QueueTask) {
   try {

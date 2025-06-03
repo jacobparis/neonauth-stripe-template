@@ -41,12 +41,13 @@ import Link from 'next/link'
 import { groupTodosByDueDate } from './utils'
 import { Textarea } from '@/components/ui/textarea'
 import { generateTodoFromUserMessage } from '@/lib/actions'
+import { nanoid } from 'nanoid'
 
 // Track all edits in one place
 type PendingEdit =
-  | { type: 'delete'; ids: Set<number> }
-  | { type: 'reschedule'; ids: Set<number>; dueDate: Date | null }
-  | { type: 'toggleCompleted'; ids: Set<number>; completed: boolean }
+  | { type: 'delete'; ids: Set<string> }
+  | { type: 'reschedule'; ids: Set<string>; dueDate: Date | null }
+  | { type: 'toggleCompleted'; ids: Set<string>; completed: boolean }
   | { type: 'add'; todo: Todo }
 
 function AddTodoForm({
@@ -86,13 +87,14 @@ function AddTodoForm({
         : null
       const finalDueDate = parsedDueDate || selectedDueDate
 
-      // Create an optimistic todo with a temporary negative ID
+      // Create an optimistic todo with a temporary nanoid
       const optimisticTodo: Todo = {
-        id: -Math.floor(Math.random() * 1000) - 1,
+        id: `temp-${nanoid(8)}`,
         title: finalTitle,
         description: null,
         completed: false,
         dueDate: finalDueDate || null,
+        userId: '', // Will be set by server
         createdAt: new Date(),
         updatedAt: new Date(),
       }
@@ -226,10 +228,10 @@ const TodoItem = memo(function TodoItem({
 }: {
   todo: Todo
   isSelected: boolean
-  onToggleSelect: (id: number, selected: boolean) => void
-  onDelete: (id: number) => void
-  onToggleCompleted: (id: number, completed: boolean) => void
-  onUpdateDueDate: (id: number, date: Date | null) => void
+  onToggleSelect: (id: string, selected: boolean) => void
+  onDelete: (id: string) => void
+  onToggleCompleted: (id: string, completed: boolean) => void
+  onUpdateDueDate: (id: string, date: Date | null) => void
 }) {
   return (
     <div
@@ -318,7 +320,7 @@ export function TodosPageClient({
 }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTodoIds, setSelectedTodoIds] = useState(
-    () => new Set<number>(),
+    () => new Set<string>(),
   )
   const [isRescheduleCalendarOpen, setIsRescheduleCalendarOpen] =
     useState(false)
@@ -341,7 +343,8 @@ export function TodosPageClient({
       // Remove optimistic todo if a real todo with the same title exists
       return !current.some(
         (realTodo) =>
-          realTodo.title === optimisticTodo.title && realTodo.id > 0, // Real todos have positive IDs
+          realTodo.title === optimisticTodo.title &&
+          !realTodo.id.startsWith('temp-'), // Real todos don't have temp- prefix
       )
     })
 
@@ -388,7 +391,7 @@ export function TodosPageClient({
   )
 
   // Memoize the handlers
-  const handleToggleSelect = useCallback((id: number, selected: boolean) => {
+  const handleToggleSelect = useCallback((id: string, selected: boolean) => {
     setSelectedTodoIds((prev) => {
       const newSet = new Set(prev)
       if (selected) {
@@ -400,7 +403,7 @@ export function TodosPageClient({
     })
   }, [])
 
-  const handleDelete = useCallback((id: number) => {
+  const handleDelete = useCallback((id: string) => {
     setPendingEdits((prev) => [...prev, { type: 'delete', ids: new Set([id]) }])
     setSelectedTodoIds((prev) => {
       const newSet = new Set(prev)
@@ -411,26 +414,26 @@ export function TodosPageClient({
   }, [])
 
   const handleToggleCompleted = useCallback(
-    (id: number, completed: boolean) => {
+    (id: string, completed: boolean) => {
       setPendingEdits((prev) => [
         ...prev,
         { type: 'toggleCompleted', ids: new Set([id]), completed },
       ])
       const formData = new FormData()
-      formData.append('id', id.toString())
+      formData.append('id', id)
       formData.append('completed', completed.toString())
       toggleTodoCompleted(formData)
     },
     [],
   )
 
-  const handleUpdateDueDate = useCallback((id: number, date: Date | null) => {
+  const handleUpdateDueDate = useCallback((id: string, date: Date | null) => {
     setPendingEdits((prev) => [
       ...prev,
       { type: 'reschedule', ids: new Set([id]), dueDate: date },
     ])
     const formData = new FormData()
-    formData.append('id', id.toString())
+    formData.append('id', id)
     formData.append('dueDate', date?.toISOString() || '')
     updateDueDate(formData)
   }, [])

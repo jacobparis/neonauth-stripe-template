@@ -6,6 +6,7 @@ import { useOptimistic, useTransition } from 'react'
 import { addComment } from '@/lib/actions'
 import { CommentForm } from './comment-form'
 import type { Comment } from '@/drizzle/schema'
+import { nanoid } from 'nanoid'
 
 type CommentWithUser = Comment & {
   user: {
@@ -21,7 +22,7 @@ export function CommentsSectionClient({
   initialComments,
   user,
 }: {
-  todoId: number
+  todoId: string
   initialComments: CommentWithUser[]
   user: {
     id: string
@@ -44,17 +45,17 @@ export function CommentsSectionClient({
     startTransition(async () => {
       // Create optimistic comment
       const optimisticComment: CommentWithUser = {
-        id: Date.now(), // Temporary ID
+        id: nanoid(8), // Use nanoid for string ID
         content: content.trim(),
         todoId,
-        userId: user.id,
+        userId: 'current-user', // This will be set properly by the server
         createdAt: new Date(),
         updatedAt: new Date(),
         user: {
-          id: user.id,
-          email: user.primaryEmail || null,
-          name: user.displayName || null,
-          image: null, // We'll use Stack Auth image directly
+          id: 'current-user',
+          email: null,
+          name: 'You',
+          image: null,
         },
       }
 
