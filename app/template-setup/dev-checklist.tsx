@@ -39,7 +39,7 @@ export async function DevChecklistPage() {
   }
 
   // Calculate progress percentage
-  const totalSteps = 10 // Total number of environment variables and migrations we're checking
+  const totalSteps = 13 // Total number of environment variables and migrations we're checking
   const completedSteps = [
     !!process.env.DATABASE_URL,
     !!process.env.NEXT_PUBLIC_STACK_PROJECT_ID,
@@ -696,10 +696,10 @@ export async function DevChecklistPage() {
             </div>
             <div>
               <h3 className="text-lg font-semibold text-gray-800">
-                xAI (Grok)
+                xAI (optional)
               </h3>
               <p className="text-sm text-gray-600">
-                AI language model for generating todo descriptions and content
+                AI model for prompts and web search
               </p>
             </div>
           </div>

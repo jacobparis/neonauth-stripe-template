@@ -297,8 +297,8 @@ importers:
         specifier: ^0.9.6
         version: 0.9.6(@types/react-dom@19.0.0)(@types/react@19.0.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       vercel-queue:
-        specifier: ^0.0.4
-        version: 0.0.4
+        specifier: ^0.0.5
+        version: 0.0.5
       zod:
         specifier: latest
         version: 3.24.4
@@ -4881,8 +4881,8 @@ packages:
     resolution: {integrity: sha512-oG62iEk+CYt5Xj2YqI5Xi9xWUeZhDI8jjQmC5oThVH5JGCTgIjr7ciJDzC7MBzYd//WvR1OTmP5Q38Q8ShQtVA==}
     engines: {node: '>= 18'}
 
-  mixpart@0.0.3:
-    resolution: {integrity: sha512-udgWmJXkwH5a/QeagGU56sI7jiEymSJCW9oVJgI6I04w+hdA6HEL8gXAOTcoS6ViTKgOpcU0RTk75GY/Vgbh8Q==}
+  mixpart@0.0.4:
+    resolution: {integrity: sha512-RAoaOSXnMLrfUfmFbNynRYjeMru/bhgAYRy/GQVI8gmRq7vm9V9c2gGVYnYoQ008X6YTmRIu5b0397U7vb0bIA==}
     engines: {node: '>=22.0.0'}
 
   mkdirp-classic@0.5.3:
@@ -6146,8 +6146,8 @@ packages:
       react: ^16.8 || ^17.0 || ^18.0
       react-dom: ^16.8 || ^17.0 || ^18.0
 
-  vercel-queue@0.0.4:
-    resolution: {integrity: sha512-PgC6pchqShEWj5gqYCXaG6qAV7A/SPrJCOXxRE0chjiMTjEQkupxhhhFFMGMTuP3LYqC9ho7R4Y/6BbVz8KJgw==}
+  vercel-queue@0.0.5:
+    resolution: {integrity: sha512-zTewk/CHCa56SqQiGyLhJr5Mc4JKD1v50SUm1IBSIm5Tva44d+rD8cW+orgM0Yd/pLH/aeabM9rkcM1dHFPCnA==}
     engines: {node: '>=22.0.0'}
 
   victory-vendor@36.9.2:
@@ -11619,7 +11619,7 @@ snapshots:
     dependencies:
       minipass: 7.1.2
 
-  mixpart@0.0.3: {}
+  mixpart@0.0.4: {}
 
   mkdirp-classic@0.5.3: {}
 
@@ -12970,9 +12970,9 @@ snapshots:
       - '@types/react'
       - '@types/react-dom'
 
-  vercel-queue@0.0.4:
+  vercel-queue@0.0.5:
     dependencies:
-      mixpart: 0.0.3
+      mixpart: 0.0.4
 
   victory-vendor@36.9.2:
     dependencies:

@@ -19,26 +19,56 @@ export async function generateTodoFromUserMessage({
 }: {
   prompt: string;
 }) {
+  const user = await stackServerApp.getUser()
+  if (!user) {
+    throw new Error('Not authenticated')
+  }
+
+  // Fallback function to truncate prompt
+  const fallbackToTruncatedPrompt = () => {
+    return {
+      title: prompt.trim().slice(0, 80),
+      dueDate: undefined
+    }
+  }
+
+  // Check if XAI_API_KEY exists
+  if (!process.env.XAI_API_KEY) {
+    return fallbackToTruncatedPrompt()
+  }
+
+  // Check rate limit before making LLM call
+  const rateLimitResult = await checkMessageRateLimit(user.id)
+  if (!rateLimitResult.success) {
+    return fallbackToTruncatedPrompt()
+  }
+
   const currentDate = new Date()
 
-  const { object } = await generateObject({
-    model: myProvider.languageModel('title-model'),
-    schema: z.object({
-      title: z.string().describe('A clear, actionable task title (max 80 characters)'),
-      dueDate: z.string().optional().describe('ISO date string if a deadline is mentioned'),
-    }),
-    system: `You are extracting todo information from user input.
-    
+  try {
+    const { object } = await generateObject({
+      model: myProvider.languageModel('title-model'),
+      schema: z.object({
+        title: z.string().describe('A clear, actionable task title (max 80 characters)'),
+        dueDate: z.string().optional().describe('ISO date string if a deadline is mentioned'),
+      }),
+      system: `You are extracting todo information from user input.
+      
 Current date: ${format(currentDate, 'PPP')} (${format(currentDate, 'EEEE')})
 
 Rules:
 - Generate a clear, actionable title (max 80 characters)
 - If a due date/deadline is mentioned, parse it relative to today and return as ISO string
 - Examples: "tomorrow" = next day, "Friday" = next Friday, "next week" = 7 days from now`,
-    prompt: prompt,
-  });
+      prompt: prompt,
+    });
 
-  return object;
+    return object;
+  } catch (error) {
+    // If LLM call fails for any reason, fall back to truncated prompt
+    console.error('LLM generation failed, falling back to truncated prompt:', error)
+    return fallbackToTruncatedPrompt()
+  }
 }
 
 export async function getTodos() {
@@ -92,17 +122,6 @@ export async function addTodo(formData: FormData) {
   const user = await stackServerApp.getUser()
   if (!user) {
     throw new Error('Not authenticated')
-  }
-
-  // Check rate limit first
-  const rateLimitResult = await checkMessageRateLimit(user.id)
-  if (!rateLimitResult.success) {
-    const hoursUntilReset = Math.ceil(
-      (rateLimitResult.reset - Date.now()) / (1000 * 60 * 60),
-    )
-    throw new Error(
-      `Rate limit exceeded. You have ${rateLimitResult.remaining} messages remaining today. Resets in ${hoursUntilReset} hours.`,
-    )
   }
 
   const text = formData.get('text') as string

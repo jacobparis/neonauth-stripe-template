@@ -40,6 +40,7 @@ import {
 import Link from 'next/link'
 import { groupTodosByDueDate } from './utils'
 import { Textarea } from '@/components/ui/textarea'
+import { generateTodoFromUserMessage } from '@/lib/actions'
 
 // Track all edits in one place
 type PendingEdit =
@@ -67,26 +68,6 @@ function AddTodoForm({
   const [todoText, setTodoText] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
 
-  async function generateTodoFromPrompt(prompt: string) {
-    try {
-      const response = await fetch('/api/generate-todo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to generate todo')
-      }
-
-      return await response.json()
-    } catch (error) {
-      console.error('Error generating todo:', error)
-      throw error
-    }
-  }
-
   async function handleAction(formData: FormData) {
     const text = formData.get('text') as string
 
@@ -96,7 +77,9 @@ function AddTodoForm({
 
     try {
       // Generate a clean title from the prompt
-      const generatedResult = await generateTodoFromPrompt(text.trim())
+      const generatedResult = await generateTodoFromUserMessage({
+        prompt: text.trim(),
+      })
       const finalTitle = generatedResult?.title || text.trim()
       const parsedDueDate = generatedResult?.dueDate
         ? new Date(generatedResult.dueDate)
