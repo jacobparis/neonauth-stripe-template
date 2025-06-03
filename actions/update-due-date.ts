@@ -4,19 +4,21 @@ import { db } from "@/lib/db"
 import { todos, comments } from "@/drizzle/schema"
 import { eq, inArray, and } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
-import { publishTask } from "@/app/api/queue/qstash"
 import { stackServerApp } from "@/stack"
 import { createNotification } from '@/app/api/notifications/notifications'
 
-// This function will be called by QStash without user context
+// This function will be called by vercel-queue without user context
 // or directly with auth context
-export async function processUpdateDueDate(ids: number[], payload: { dueDate: Date | null, userId?: string }) {
+export async function processUpdateDueDate(
+  ids: number[],
+  args: { dueDate: Date | null; userId?: string }
+) {
   // Filter out invalid IDs (optimistic todos)
   const validIds = ids.filter((id) => id > 0)
   if (validIds.length === 0) return
 
-  // When called via QStash, use the passed userId 
-  if (payload.userId) {
+  // When called via vercel-queue, use the passed userId
+  if (args.userId) {
     // Get current todos to check for changes
     const currentTodos = await db.query.todos.findMany({
       where: inArray(todos.id, validIds)
@@ -24,24 +26,24 @@ export async function processUpdateDueDate(ids: number[], payload: { dueDate: Da
 
     const [updatedTodos] = await db
       .update(todos)
-      .set({ dueDate: payload.dueDate })
+      .set({ dueDate: args.dueDate })
       .where(inArray(todos.id, validIds))
       .returning()
 
     // Create activity comments for todos that actually changed
     for (const currentTodo of currentTodos) {
       const currentDueDateStr = currentTodo.dueDate?.toDateString()
-      const newDueDateStr = payload.dueDate?.toDateString()
+      const newDueDateStr = args.dueDate?.toDateString()
       
       if (currentDueDateStr !== newDueDateStr) {
-        const dueDateComment = payload.dueDate 
-          ? `Due date set to ${payload.dueDate.toLocaleDateString()}`
+        const dueDateComment = args.dueDate 
+          ? `Due date set to ${args.dueDate.toLocaleDateString()}`
           : "Due date removed"
 
         await db.insert(comments).values({
           content: dueDateComment,
           todoId: currentTodo.id,
-          userId: payload.userId,
+          userId: args.userId,
         })
       }
     }
@@ -50,10 +52,10 @@ export async function processUpdateDueDate(ids: number[], payload: { dueDate: Da
     await Promise.all(
       validIds.map(id => 
         createNotification({
-          userId: payload.userId!,
+          userId: args.userId!,
           type: "info",
-          message: payload.dueDate 
-            ? `Due date updated to ${payload.dueDate.toLocaleDateString()}`
+          message: args.dueDate 
+            ? `Due date updated to ${args.dueDate.toLocaleDateString()}`
             : "Due date removed",
           taskId: id,
         })
@@ -73,18 +75,18 @@ export async function processUpdateDueDate(ids: number[], payload: { dueDate: Da
 
     const [updatedTodos] = await db
       .update(todos)
-      .set({ dueDate: payload.dueDate })
+      .set({ dueDate: args.dueDate })
       .where(inArray(todos.id, validIds))
       .returning()
 
     // Create activity comments for todos that actually changed
     for (const currentTodo of currentTodos) {
       const currentDueDateStr = currentTodo.dueDate?.toDateString()
-      const newDueDateStr = payload.dueDate?.toDateString()
+      const newDueDateStr = args.dueDate?.toDateString()
       
       if (currentDueDateStr !== newDueDateStr) {
-        const dueDateComment = payload.dueDate 
-          ? `Due date set to ${payload.dueDate.toLocaleDateString()}`
+        const dueDateComment = args.dueDate 
+          ? `Due date set to ${args.dueDate.toLocaleDateString()}`
           : "Due date removed"
 
         await db.insert(comments).values({
@@ -101,8 +103,8 @@ export async function processUpdateDueDate(ids: number[], payload: { dueDate: Da
         createNotification({
           userId: user.id,
           type: "info",
-          message: payload.dueDate 
-            ? `Due date updated to ${payload.dueDate.toLocaleDateString()}`
+          message: args.dueDate 
+            ? `Due date updated to ${args.dueDate.toLocaleDateString()}`
             : "Due date removed",
           taskId: id,
         })

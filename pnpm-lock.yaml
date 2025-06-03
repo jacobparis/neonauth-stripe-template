@@ -155,9 +155,6 @@ importers:
       '@types/sql.js':
         specifier: latest
         version: 1.4.9
-      '@upstash/qstash':
-        specifier: latest
-        version: 2.8.1
       '@upstash/ratelimit':
         specifier: ^2.0.5
         version: 2.0.5(@upstash/redis@1.34.9)
@@ -299,6 +296,9 @@ importers:
       vaul:
         specifier: ^0.9.6
         version: 0.9.6(@types/react-dom@19.0.0)(@types/react@19.0.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      vercel-queue:
+        specifier: ^0.0.4
+        version: 0.0.4
       zod:
         specifier: latest
         version: 3.24.4
@@ -2987,9 +2987,6 @@ packages:
     resolution: {integrity: sha512-7qJHGxpQgQr9/vmeS1PktEwvNAF7TI4iJDi8Pu2CFZ9YUGHZH4fOP5TfYlZ4aVxfopnELiE4BS4FBjyK7V1/xQ==}
     engines: {node: '>=16.0.0'}
 
-  '@upstash/qstash@2.8.1':
-    resolution: {integrity: sha512-E+JoLHMqygQksWATjS/9AAo7Mhi/k21Tu0zDwMm9GyNyNVjEJntQvmrH5NC7x6kXwjCDTEWFtIWz0JXu9/9pMQ==}
-
   '@upstash/ratelimit@2.0.5':
     resolution: {integrity: sha512-1FRv0cs3ZlBjCNOCpCmKYmt9BYGIJf0J0R3pucOPE88R21rL7jNjXG+I+rN/BVOvYJhI9niRAS/JaSNjiSICxA==}
     peerDependencies:
@@ -4884,6 +4881,10 @@ packages:
     resolution: {integrity: sha512-oG62iEk+CYt5Xj2YqI5Xi9xWUeZhDI8jjQmC5oThVH5JGCTgIjr7ciJDzC7MBzYd//WvR1OTmP5Q38Q8ShQtVA==}
     engines: {node: '>= 18'}
 
+  mixpart@0.0.3:
+    resolution: {integrity: sha512-udgWmJXkwH5a/QeagGU56sI7jiEymSJCW9oVJgI6I04w+hdA6HEL8gXAOTcoS6ViTKgOpcU0RTk75GY/Vgbh8Q==}
+    engines: {node: '>=22.0.0'}
+
   mkdirp-classic@0.5.3:
     resolution: {integrity: sha512-gKLcREMhtuZRwRAfqP3RFW+TK4JqApVBtOIftVgjuABpAtpxhPGaDcfvbhNvD0B8iD1oUr/txX35NjcaY6Ns/A==}
 
@@ -4943,10 +4944,6 @@ packages:
 
   nested-error-stacks@2.0.1:
     resolution: {integrity: sha512-SrQrok4CATudVzBS7coSz26QRSmlK9TzzoFbeKfcPBUFPjcQM9Rqvr/DlJkOrwI/0KcgvMub1n1g5Jt9EgRn4A==}
-
-  neverthrow@7.2.0:
-    resolution: {integrity: sha512-iGBUfFB7yPczHHtA8dksKTJ9E8TESNTAx1UQWW6TzMF280vo9jdPYpLUXrMN1BCkPdHFdNG3fxOt2CUad8KhAw==}
-    engines: {node: '>=18'}
 
   next-themes@0.4.6:
     resolution: {integrity: sha512-pZvgD5L0IEvX5/9GWyHMf3m8BKiVQwsCMHfoFosXtXBMnaS0ZnIJ9ST4b4NqLVKDEm8QBxoNNGNaBv2JNF6XNA==}
@@ -6148,6 +6145,10 @@ packages:
     peerDependencies:
       react: ^16.8 || ^17.0 || ^18.0
       react-dom: ^16.8 || ^17.0 || ^18.0
+
+  vercel-queue@0.0.4:
+    resolution: {integrity: sha512-PgC6pchqShEWj5gqYCXaG6qAV7A/SPrJCOXxRE0chjiMTjEQkupxhhhFFMGMTuP3LYqC9ho7R4Y/6BbVz8KJgw==}
+    engines: {node: '>=22.0.0'}
 
   victory-vendor@36.9.2:
     resolution: {integrity: sha512-PnpQQMuxlwYdocC8fIJqVXvkeViHYzotI+NJrCuav0ZYFoq912ZHBk3mCeuj+5/VpodOjPe1z0Fk2ihgzlXqjQ==}
@@ -9605,12 +9606,6 @@ snapshots:
     dependencies:
       '@upstash/redis': 1.34.9
 
-  '@upstash/qstash@2.8.1':
-    dependencies:
-      crypto-js: 4.2.0
-      jose: 5.10.0
-      neverthrow: 7.2.0
-
   '@upstash/ratelimit@2.0.5(@upstash/redis@1.34.9)':
     dependencies:
       '@upstash/core-analytics': 0.0.10
@@ -11624,6 +11619,8 @@ snapshots:
     dependencies:
       minipass: 7.1.2
 
+  mixpart@0.0.3: {}
+
   mkdirp-classic@0.5.3: {}
 
   mkdirp@1.0.4: {}
@@ -11671,8 +11668,6 @@ snapshots:
   negotiator@0.6.4: {}
 
   nested-error-stacks@2.0.1: {}
-
-  neverthrow@7.2.0: {}
 
   next-themes@0.4.6(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
     dependencies:
@@ -12974,6 +12969,10 @@ snapshots:
     transitivePeerDependencies:
       - '@types/react'
       - '@types/react-dom'
+
+  vercel-queue@0.0.4:
+    dependencies:
+      mixpart: 0.0.3
 
   victory-vendor@36.9.2:
     dependencies:

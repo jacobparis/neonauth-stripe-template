@@ -4,7 +4,6 @@ import { db } from "@/lib/db"
 import { todos, comments } from "@/drizzle/schema"
 import { eq, inArray, and } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
-import { publishTask } from "@/app/api/queue/qstash"
 import { stackServerApp } from "@/stack"
 import { createNotification } from '@/app/api/notifications/notifications'
 

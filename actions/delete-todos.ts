@@ -2,20 +2,19 @@
 
 import { db } from "@/lib/db"
 import { todos } from "@/drizzle/schema"
-import { inArray, eq, and } from "drizzle-orm"
+import { inArray } from "drizzle-orm"
 import { revalidatePath } from "next/cache"
-import { publishTask } from "@/app/api/queue/qstash"
 import { stackServerApp } from "@/stack"
 import { createNotification } from '@/app/api/notifications/notifications'
 
-// This function will be called by QStash without user context
+// This function will be called by vercel-queue without user context
 // or directly with auth context
 export async function processDeleteTodos(ids: number[], userId?: string) {
   // Filter out invalid IDs (optimistic todos)
   const validIds = ids.filter((id) => id > 0)
   if (validIds.length === 0) return
 
-  // When called via QStash, use the passed userId 
+  // When called via vercel-queue, use the passed userId 
   if (userId) {
     // Get the todos before deleting them
     const todosToDelete = await db.query.todos.findMany({

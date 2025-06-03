@@ -1,40 +1,40 @@
-import { processTask} from "@/app/api/queue/qstash"
-import { Receiver } from "@upstash/qstash"
+import { CallbackConfig, VQSClient, createTopic } from "vercel-queue"
+import { processTask, QueueTask } from "@/app/api/queue/vercel-queue"
 
-export type QueueTask = 
-  | { type: "deleteTodo"; key: `delete-todo-${number}`; id: number }
-  | { type: "deleteTodos"; key: `delete-todos-${string}`; ids: number[] }
-  | { type: "updateDueDate"; key: `update-due-date-${string}`; ids: number[]; dueDate: string | null }
-  | { type: "toggleCompleted"; key: `toggle-completed-${string}`; ids: number[]; completed: boolean }
+const client = new VQSClient({
+  token: process.env.VERCEL_OIDC_TOKEN!,
+})
 
-export async function POST(req: Request) {
-  const signature = req.headers.get("upstash-signature")
-  const body = await req.text()
+const topic = createTopic<QueueTask>(client, "task-queue")
+const consumer = topic.consumerGroup("task-processors")
+
+export async function POST() {
+  const signal = AbortSignal.timeout(25000)
+
+  try {
+    await consumer.subscribe(signal, async (message) => {
+      console.log(`Processing: ${message.payload.type}`)
+      await processTask(message.payload)
+    })
+
+    return Response.json({ message: "Queue processing completed" }, { status: 200 })
+  } catch (error) {
+    return Response.json({ error: "Queue processing failed" }, { status: 500 })
+  }
+}
+
+
+export async function publishTask<T extends QueueTask>(task: T, options?: {
+  idempotencyKey?: string;
+  retentionSeconds?: number;
+  callbacks?: Record<string, CallbackConfig>;
+}) {
+  await topic.publish(task, options)
+
+  // wake up the processor
+  void fetch(`${process.env.VERCEL_URL}/api/queue`, {
+    method: 'POST'
+  }).catch(() => {})
   
-  if (!signature) {
-    return Response.json({ error: "No signature" }, { status: 401 })
-  }
-
-  if (!body) { 
-    return Response.json({ error: "No body" }, { status: 401 })
-  }
-
-  const receiver = new Receiver({
-    currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY!,
-    nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY!,
-  })
-
-  const isValid = await receiver.verify({
-    signature: signature || "",
-    body,
-  })
-
-  if (!isValid) {
-    return Response.json({ error: "Invalid signature" }, { status: 401 })
-  }
-
-  const task = JSON.parse(body) as QueueTask
-  await processTask(task)
-
-  return Response.json({ message: "Task processed" }, { status: 200 })
+  return { success: true }
 }

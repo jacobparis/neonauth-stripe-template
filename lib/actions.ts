@@ -12,6 +12,7 @@ import { myProvider } from '@/lib/ai/providers'
 import { format } from 'date-fns'
 import { z } from 'zod'
 import { checkMessageRateLimit } from '@/lib/rate-limit'
+import { publishTask } from "@/app/api/queue/route"
 
 export async function generateTodoFromUserMessage({
   prompt,
@@ -144,6 +145,17 @@ export async function addTodo(formData: FormData) {
       message: `New todo created: ${text}`,
       taskId: todo.id,
     })
+
+    // Queue AI description generation if no description was provided
+    if (!description?.trim()) {
+      await publishTask({
+        type: "generateDescription",
+        key: `generate-description-${todo.id}`,
+        todoId: todo.id,
+        title: text,
+        userId: user.id,
+      })
+    }
 
     revalidatePath("/")
     return { success: true }
