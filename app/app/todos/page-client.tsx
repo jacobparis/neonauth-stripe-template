@@ -10,7 +10,6 @@ import { toggleTodoCompleted } from '@/actions/toggle-completed'
 import { createSampleTodos } from '@/actions/create-sample-todos'
 import { redirectToCheckout } from '@/app/api/stripe/client'
 import {
-  Search,
   Plus,
   Trash,
   X,
@@ -318,7 +317,6 @@ export function TodosPageClient({
     reset: number
   }
 }) {
-  const [searchQuery, setSearchQuery] = useState('')
   const [selectedTodoIds, setSelectedTodoIds] = useState(
     () => new Set<string>(),
   )
@@ -374,15 +372,6 @@ export function TodosPageClient({
 
     return current
   }, [todos, pendingEdits])
-
-  // Memoize the filtered todos
-  const filteredTodos = useMemo(
-    () =>
-      displayedTodos.filter((todo) =>
-        todo.title.toLowerCase().includes(searchQuery.toLowerCase()),
-      ),
-    [displayedTodos, searchQuery],
-  )
 
   // Memoize the selected todos
   const selectedTodos = useMemo(
@@ -440,8 +429,8 @@ export function TodosPageClient({
 
   // Memoize the todo groups
   const todoGroups = useMemo(
-    () => groupTodosByDueDate(filteredTodos),
-    [filteredTodos],
+    () => groupTodosByDueDate(displayedTodos),
+    [displayedTodos],
   )
 
   // Delete multiple todos
@@ -503,21 +492,7 @@ export function TodosPageClient({
   }
 
   return (
-    <div className="space-y-6 pb-40">
-      {/* Search, Filter, and Add */}
-      <div className="flex flex-wrap gap-4 items-center">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="-mt-[0.125rem] absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Search todos..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-8"
-          />
-        </div>
-      </div>
-
+    <div className="space-y-6 pb-40 mt-8">
       {/* Todo list */}
       <div>
         {/* Card Header with Bulk Actions */}
@@ -532,7 +507,7 @@ export function TodosPageClient({
                     selectedTodos.length > 0 && displayedTodos.length > 0
                   }
                   onCheckedChange={toggleSelectAll}
-                  className="data-[state=checked]:bg-muted0 data-[state=checked]:text-white data-[state=checked]:border-muted0"
+                  className="data-[state=checked]:bg-muted data-[state=checked]:text-white data-[state=checked]:border-muted"
                 />
                 <label htmlFor="select-all" className="text-sm font-medium">
                   {selectedTodoIds.size} selected
@@ -638,25 +613,22 @@ export function TodosPageClient({
                   onCheckedChange={(checked: boolean) => {
                     toggleSelectAll(checked)
                   }}
-                  className="data-[state=checked]:bg-muted0 data-[state=checked]:text-white data-[state=checked]:border-muted0"
+                  className="data-[state=checked]:bg-muted data-[state=checked]:text-white data-[state=checked]:border-muted"
                 />
                 <label htmlFor="select-all" className="text-sm font-medium">
                   Select All
                 </label>
               </div>
               <div className="text-sm text-muted-foreground">
-                {filteredTodos.length} item
-                {filteredTodos.length !== 1 ? 's ' : ' '}
-                {filteredTodos.length !== displayedTodos.length && (
-                  <span>matching {searchQuery}</span>
-                )}
+                {displayedTodos.length} item
+                {displayedTodos.length !== 1 ? 's' : ''}
               </div>
             </>
           )}
         </div>
 
         {/* Todo Groups */}
-        {displayedTodos.length === 0 && !searchQuery ? (
+        {displayedTodos.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground mb-4">No todos yet.</p>
             <Button
@@ -670,10 +642,6 @@ export function TodosPageClient({
               Create sample todos
             </Button>
           </div>
-        ) : filteredTodos.length === 0 ? (
-          <p className="text-center text-muted-foreground py-4">
-            No todos match your search
-          </p>
         ) : (
           <div className="grid grid-cols-[1fr_auto_auto_auto]">
             {todoGroups.map((group) => (

@@ -1,11 +1,16 @@
-"use client"
-import { Moon, Sun, Laptop } from "lucide-react"
-import { useTheme } from "next-themes"
+'use client'
+import { Moon, Sun, Laptop } from 'lucide-react'
+import { useTheme } from 'next-themes'
 
-import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Label } from "./ui/label"
-import { RadioGroup, RadioGroupItem } from "./ui/radio-group"
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Label } from './ui/label'
+import { RadioGroup, RadioGroupItem } from './ui/radio-group'
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
@@ -19,14 +24,26 @@ export function ThemeToggle() {
           <span className="sr-only">Toggle theme</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="dark:bg-card dark:border-border/50">
-        <DropdownMenuItem onClick={() => setTheme("light")} className="cursor-pointer">
+      <DropdownMenuContent
+        align="end"
+        className="dark:bg-card dark:border-border/50"
+      >
+        <DropdownMenuItem
+          onClick={() => setTheme('light')}
+          className="cursor-pointer"
+        >
           Light
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("dark")} className="cursor-pointer">
+        <DropdownMenuItem
+          onClick={() => setTheme('dark')}
+          className="cursor-pointer"
+        >
           Dark
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => setTheme("system")} className="cursor-pointer">
+        <DropdownMenuItem
+          onClick={() => setTheme('system')}
+          className="cursor-pointer"
+        >
           System
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -38,7 +55,11 @@ export function ThemeSelect() {
   const { theme, setTheme } = useTheme()
 
   return (
-    <RadioGroup defaultValue={theme} onValueChange={setTheme} className="flex gap-4">
+    <RadioGroup
+      defaultValue={theme}
+      onValueChange={setTheme}
+      className="flex gap-4"
+    >
       <div className="flex items-center space-x-2">
         <RadioGroupItem value="light" id="light" />
         <Label htmlFor="light" className="flex items-center gap-1.5">

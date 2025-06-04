@@ -45,12 +45,12 @@ export function WatchButtonClient({
     >
       {isWatching ? (
         <>
-          <Eye className="h-4 w-4" />
+          <Eye className="h-4 w-4 -ml-1" />
           Watching
         </>
       ) : (
         <>
-          <EyeOff className="h-4 w-4" />
+          <EyeOff className="h-4 w-4 -ml-1" />
           Watch
         </>
       )}

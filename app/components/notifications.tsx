@@ -188,10 +188,10 @@ export function NotificationsMenu() {
       <Button
         variant="ghost"
         size="sm"
-        className="p-2 hover:bg-gray-100/80 transition-all duration-200 rounded-lg relative"
+        className="p-2 hover:bg-muted/80 transition-all duration-200 rounded-lg relative"
         onClick={() => setShowNotifications(!showNotifications)}
       >
-        <Bell className="h-4 w-4 text-gray-600" />
+        <Bell className="h-4 w-4 text-muted-foreground" />
         {unreadCount > 0 && (
           <div className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full flex items-center justify-center">
             <span className="text-xs text-white font-semibold">
@@ -202,10 +202,10 @@ export function NotificationsMenu() {
       </Button>
 
       {showNotifications && (
-        <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200/60 backdrop-blur-sm z-50">
-          <div className="p-3 border-b border-gray-200/40">
+        <div className="absolute right-0 top-full mt-2 w-72 bg-card rounded-lg shadow-xl border border-border backdrop-blur-sm z-50">
+          <div className="p-3 border-b border-border">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900">
+              <h3 className="text-sm font-semibold text-foreground">
                 Notifications
               </h3>
               <div className="flex items-center gap-1">
@@ -214,7 +214,7 @@ export function NotificationsMenu() {
                     variant="ghost"
                     size="sm"
                     onClick={markAllAsRead}
-                    className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 h-6"
+                    className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 h-6"
                   >
                     Mark all read
                   </Button>
@@ -224,7 +224,7 @@ export function NotificationsMenu() {
                     variant="ghost"
                     size="sm"
                     onClick={handleClearRead}
-                    className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 h-6"
+                    className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 h-6"
                   >
                     Clear read
                   </Button>
@@ -233,9 +233,9 @@ export function NotificationsMenu() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowNotifications(false)}
-                  className="p-1 hover:bg-gray-100 rounded h-6 w-6"
+                  className="p-1 hover:bg-muted rounded h-6 w-6"
                 >
-                  <X className="h-3 w-3 text-gray-500" />
+                  <X className="h-3 w-3 text-muted-foreground" />
                 </Button>
               </div>
             </div>
@@ -243,7 +243,7 @@ export function NotificationsMenu() {
 
           <div className="max-h-80 overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="p-4 text-center text-gray-500 text-sm">
+              <div className="p-4 text-center text-muted-foreground text-sm">
                 {error
                   ? 'Failed to load notifications'
                   : data === undefined
@@ -254,8 +254,10 @@ export function NotificationsMenu() {
               notifications.map((notification: Notification) => (
                 <div
                   key={notification.id}
-                  className={`p-3 border-b border-gray-200/20 hover:bg-gray-50/50 transition-all duration-200 cursor-pointer ${
-                    !notification.read ? 'bg-blue-50/30' : ''
+                  className={`p-3 border-b border-border hover:bg-muted/50 transition-all duration-200 cursor-pointer ${
+                    !notification.read
+                      ? 'bg-blue-50/30 dark:bg-blue-950/30'
+                      : ''
                   }`}
                   onClick={() => handleNotificationClick(notification)}
                   role="link"
@@ -269,10 +271,10 @@ export function NotificationsMenu() {
                 >
                   <div className="flex gap-2">
                     <div>
-                      <p className="text-sm text-gray-900">
+                      <p className="text-sm text-foreground">
                         {notification.message}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         {formatDistanceToNow(new Date(notification.createdAt), {
                           addSuffix: true,
                         })}

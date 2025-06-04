@@ -38,7 +38,7 @@ export function CommentForm({ todoId, onSubmit, isPending }: CommentFormProps) {
         <Textarea
           name="content"
           placeholder="Add a comment..."
-          className="min-h-[80px] resize-none border-gray-200/60 focus:border-orange-300 focus:ring-orange-200"
+          className="min-h-[80px] resize-none border-border focus:border-orange-300 focus:ring-orange-200"
           disabled={isPending}
           onKeyDown={handleKeyDown}
         />

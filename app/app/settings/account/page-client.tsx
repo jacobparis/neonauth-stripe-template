@@ -161,12 +161,12 @@ export function AccountPageClient({
 
         <div className="mt-4 space-y-4">
           {contactChannels.map((channel) => (
-            <div key={channel.id} className="p-3 rounded-md bg-secondary/50">
+            <div key={channel.id} className="p-3 rounded-md bg-muted/50">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{channel.value}</span>
                   {channel.isPrimary && (
-                    <Badge variant="secondary">Primary</Badge>
+                    <Badge variant="outline">Primary</Badge>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -187,18 +187,13 @@ export function AccountPageClient({
                             type="submit"
                             variant="outline"
                             size="sm"
-                            className="h-8 bg-secondary/80"
+                            className="h-8"
                           >
                             Use for Auth
                           </Button>
                         </form>
                       ) : (
-                        <Badge
-                          variant="outline"
-                          className="bg-green-900/20 text-green-400 border-green-800/30"
-                        >
-                          Verified
-                        </Badge>
+                        <Badge variant="outline">Verified</Badge>
                       )
                     ) : (
                       <form
@@ -211,12 +206,7 @@ export function AccountPageClient({
                         }}
                       >
                         <input type="hidden" name="id" value={channel.id} />
-                        <Button
-                          type="submit"
-                          variant="outline"
-                          size="sm"
-                          className="h-8 bg-secondary/80"
-                        >
+                        <Button type="submit" variant="outline" size="sm">
                           Make Primary
                         </Button>
                       </form>
@@ -251,32 +241,22 @@ export function AccountPageClient({
                       {pendingVerificationId === channel.id ? (
                         <Badge
                           variant="outline"
-                          className="bg-blue-900/20 text-blue-400 border-blue-800/30 flex items-center gap-1"
+                          className="bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800 flex items-center gap-1"
                         >
-                          <span className="h-2 w-2 rounded-full bg-blue-400 animate-pulse"></span>
+                          <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
                           Check email
                         </Badge>
                       ) : verificationErrors[channel.id] ? (
                         <div className="flex flex-col gap-1">
-                          <Button
-                            type="submit"
-                            variant="outline"
-                            size="sm"
-                            className="h-7 px-2 text-xs bg-red-900/20 text-red-400 border-red-800/30 hover:bg-red-900/30 hover:text-red-300"
-                          >
+                          <Button type="submit" variant="outline" size="sm">
                             Try again
                           </Button>
-                          <p className="text-xs text-red-400">
+                          <p className="text-xs text-red-600 dark:text-red-400">
                             {verificationErrors[channel.id]}
                           </p>
                         </div>
                       ) : (
-                        <Button
-                          type="submit"
-                          variant="outline"
-                          size="sm"
-                          className="h-7 px-3 text-xs bg-secondary/80 text-foreground border-border hover:bg-secondary hover:text-foreground flex items-center gap-1.5"
-                        >
+                        <Button type="submit" variant="outline" size="sm">
                           <svg
                             width="12"
                             height="12"
@@ -308,12 +288,7 @@ export function AccountPageClient({
                       }}
                     >
                       <input type="hidden" name="id" value={channel.id} />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        type="submit"
-                        className="text-muted-foreground"
-                      >
+                      <Button variant="outline" size="sm" type="submit">
                         <TrashIcon className="h-4 w-4" />
                         <span className="sr-only">Remove</span>
                       </Button>
@@ -341,9 +316,11 @@ export function AccountPageClient({
                 name="email"
                 type="email"
                 placeholder="Add another email address"
-                className="dark:bg-secondary/50 dark:border-border/50 focus:dark:bg-secondary/80"
+                className="bg-background border-border focus:bg-background"
               />
-              <Button type="submit">Add</Button>
+              <Button type="submit" variant="outline">
+                Add
+              </Button>
             </div>
           </form>
         </div>
@@ -390,7 +367,7 @@ export function AccountPageClient({
                 setIsUpdatingPassword(false)
               }
             }}
-            className="p-4 rounded-md bg-secondary/50"
+            className="p-4 rounded-md bg-muted/50"
             id="password-form"
           >
             <div className="grid gap-4">
@@ -408,11 +385,11 @@ export function AccountPageClient({
                         setPasswordSuccess(null)
                       }}
                       disabled={isUpdatingPassword}
-                      className="dark:bg-background/70 dark:border-border/50 focus:dark:bg-background/90"
+                      className="bg-background border-border focus:bg-background"
                     />
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
                       className="absolute right-0 top-0 h-full"
                       onClick={() =>
@@ -448,11 +425,11 @@ export function AccountPageClient({
                       setPasswordSuccess(null)
                     }}
                     disabled={isUpdatingPassword}
-                    className="dark:bg-background/70 dark:border-border/50 focus:dark:bg-background/90"
+                    className="bg-background border-border focus:bg-background"
                   />
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
                     className="absolute right-0 top-0 h-full"
                     onClick={() => setShowNewPassword(!showNewPassword)}
@@ -476,7 +453,7 @@ export function AccountPageClient({
                 <div
                   id="password-error"
                   aria-live="polite"
-                  className="text-sm text-red-400 mb-3"
+                  className="text-sm text-red-600 dark:text-red-400 mb-3"
                 >
                   {passwordError}
                 </div>
@@ -485,7 +462,7 @@ export function AccountPageClient({
                 <div
                   id="password-success"
                   aria-live="polite"
-                  className="text-sm text-green-400 mb-3"
+                  className="text-sm text-foreground mb-3"
                 >
                   {passwordSuccess}
                 </div>
@@ -493,8 +470,8 @@ export function AccountPageClient({
               <div className="flex justify-end mt-4">
                 <Button
                   type="submit"
+                  variant="outline"
                   disabled={isUpdatingPassword}
-                  className="bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   {isUpdatingPassword ? (
                     <>
@@ -537,7 +514,7 @@ export function AccountPageClient({
                 Delete
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="dark:bg-card dark:border-border/50">
+            <AlertDialogContent className="bg-card border-border">
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 {deleteError ? (
@@ -552,7 +529,7 @@ export function AccountPageClient({
                 )}
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel className="dark:bg-secondary/80 dark:hover:bg-secondary">
+                <AlertDialogCancel className="hover:bg-muted">
                   Cancel
                 </AlertDialogCancel>
                 <form

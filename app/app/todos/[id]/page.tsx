@@ -50,12 +50,14 @@ export default async function TodoItemPage({
         </div>
 
         <TodoStateProvider todo={todo}>
-          <TodoItemPageClient todo={todo} />
+          <div className="mt-8">
+            <TodoItemPageClient todo={todo} />
+          </div>
 
           {/* Activity Section */}
-          <div className="px-6 mt-16">
+          <div className="mt-16">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-900 tracking-wide uppercase">
+              <h3 className="text-sm font-semibold text-foreground tracking-wide uppercase">
                 Activity
               </h3>
 
@@ -65,7 +67,7 @@ export default async function TodoItemPage({
             <div className="mt-6">
               <Suspense
                 fallback={
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-muted-foreground">
                     Loading activity...
                   </div>
                 }

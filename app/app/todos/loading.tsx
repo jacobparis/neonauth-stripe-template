@@ -5,7 +5,7 @@ export default function TodosLoading() {
     <div className="space-y-6">
       {/* Productivity Metrics */}
       <div className="grid grid-cols-5 gap-4 mt-8">
-        <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border shadow-sm col-span-2">
+        <div className="bg-card p-4 rounded-lg border shadow-sm col-span-2">
           <div className="flex items-center justify-between mb-1">
             <Skeleton className="h-4 w-24" />
           </div>

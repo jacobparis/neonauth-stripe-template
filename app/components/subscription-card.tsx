@@ -60,7 +60,7 @@ export function SubscriptionCard({
           <h2 className="text-xl font-medium">
             {isPro ? 'Pro Plan' : 'Free Plan'}
           </h2>
-          {isPro ? <Badge>Active</Badge> : null}
+          {isPro ? <Badge variant="outline">Active</Badge> : null}
         </div>
         <p className="text-sm text-muted-foreground">
           {isPro
@@ -84,11 +84,11 @@ export function SubscriptionCard({
       {!isPro && (
         <ul className="grid gap-2 text-sm mt-4">
           <li className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-primary" />
+            <Zap className="h-4 w-4 text-muted" />
             <span>{messageLimit} messages per day</span>
           </li>
           <li className="flex items-center gap-2">
-            <Package className="h-4 w-4 text-primary" />
+            <Package className="h-4 w-4 text-muted" />
             <span>Basic AI assistance</span>
           </li>
         </ul>
@@ -107,7 +107,12 @@ export function SubscriptionCard({
               }
             }}
           >
-            <Button type="submit" className="gap-2" disabled={isLoading}>
+            <Button
+              type="submit"
+              variant="outline"
+              className="gap-2"
+              disabled={isLoading}
+            >
               {isLoading ? 'Redirecting...' : 'Manage Subscription'}
             </Button>
           </form>

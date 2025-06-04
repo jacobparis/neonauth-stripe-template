@@ -50,7 +50,7 @@ export function TodoItemPageClient({ todo }: { todo: Todo }) {
   return (
     <div>
       {/* Task Header */}
-      <div className="px-6 py-8 bg-gradient-to-b from-white/95 to-white/80">
+      <div className="mt-8">
         <form action={updateTodo}>
           <input type="hidden" name="id" value={todo.id} />
           {/* Task Title */}
@@ -59,7 +59,7 @@ export function TodoItemPageClient({ todo }: { todo: Todo }) {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={(e) => e.target.form?.requestSubmit()}
-            className="w-full text-xl md:text-2xl text-gray-900 tracking-tight leading-tight bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-gray-400"
+            className="w-full text-xl md:text-2xl text-foreground tracking-tight leading-tight bg-transparent border-none outline-none focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground"
             placeholder="Task title..."
           />
 
@@ -71,14 +71,14 @@ export function TodoItemPageClient({ todo }: { todo: Todo }) {
               onChange={(e) => setDescription(e.target.value)}
               onBlur={(e) => e.target.form?.requestSubmit()}
               placeholder="Add a description..."
-              className="w-full p-4 bg-gray-50/50 rounded-xl border border-gray-200 hover:bg-gray-50/80 focus:bg-white focus:border-gray-300 transition-all duration-200 resize-none min-h-[60px] text-base font-medium text-gray-700 placeholder:text-gray-500 focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="w-full p-4 bg-muted/50 rounded-xl border border-border hover:bg-muted/80 focus:bg-card focus:border-border transition-all duration-200 resize-none min-h-[60px] text-base font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
               rows={3}
             />
           </div>
 
           {/* Task Controls */}
-          <div className="flex items-center justify-between mt-2 p-4 bg-white/60 rounded-none shadow-none px-0 py-0">
-            <div className="flex items-center gap-6">
+          <div className="flex items-center justify-between mt-2">
+            <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -86,7 +86,7 @@ export function TodoItemPageClient({ todo }: { todo: Todo }) {
                 className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
                   completed
                     ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
-                    : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                    : 'bg-muted text-foreground border-border hover:bg-muted/80'
                 }`}
               >
                 {completed ? 'Completed' : 'Done'}
@@ -94,8 +94,8 @@ export function TodoItemPageClient({ todo }: { todo: Todo }) {
 
               <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                 <PopoverTrigger asChild>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 px-3 py-1.5 bg-gray-50/60 rounded-lg border border-gray-200/40 cursor-pointer">
-                    <CalendarIcon className="h-4 w-4 text-gray-500" />
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground px-3 py-1.5 bg-muted/60 rounded-lg border border-border/40 cursor-pointer">
+                    <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">
                       {date && isValid(date)
                         ? format(date, 'MMMM do, yyyy')
@@ -129,9 +129,8 @@ export function TodoItemPageClient({ todo }: { todo: Todo }) {
               size="sm"
               onClick={handleDelete}
               disabled={isPending}
-              className="text-gray-600 hover:text-gray-800 hover:bg-gray-100 px-4 py-2 rounded-lg font-medium transition-all duration-200"
+              className="text-muted-foreground hover:text-foreground hover:bg-muted px-4 py-2 rounded-lg font-medium transition-all duration-200"
             >
-              <Trash2 className="h-4 w-4 mr-2" />
               Delete
             </Button>
           </div>

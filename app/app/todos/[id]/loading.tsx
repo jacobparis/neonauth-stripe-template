@@ -17,7 +17,7 @@ export default function TodoItemLoading() {
       </div>
 
       {/* Task Header */}
-      <div className="px-6 py-8 bg-gradient-to-b from-white/95 to-white/80">
+      <div className="px-6 py-8 bg-gradient-to-b from-card/95 to-card/80">
         {/* Task Title */}
         <Skeleton className="h-8 w-3/4 mb-2" />
 
@@ -27,7 +27,7 @@ export default function TodoItemLoading() {
         </div>
 
         {/* Task Controls */}
-        <div className="flex items-center justify-between mt-2 p-4 bg-white/60 rounded-none shadow-none px-0 py-0">
+        <div className="flex items-center justify-between mt-2 p-4 bg-card/60 rounded-none shadow-none px-0 py-0">
           <div className="flex items-center gap-6">
             <Skeleton className="h-8 w-20" />
             <Skeleton className="h-8 w-32" />
@@ -62,7 +62,7 @@ export default function TodoItemLoading() {
           </div>
 
           {/* Add Comment */}
-          <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200/40">
+          <div className="flex gap-3 mt-6 pt-4 border-t border-border">
             <Skeleton className="h-8 w-8 rounded-full" />
             <div className="flex-1">
               <Skeleton className="h-12 w-full rounded-lg" />

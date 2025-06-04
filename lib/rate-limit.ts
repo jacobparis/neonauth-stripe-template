@@ -28,21 +28,12 @@ export async function checkMessageRateLimit(userId: string) {
 
 // Function to get rate limit status without consuming tokens
 export async function getRateLimitStatus(userId: string) {
-  try {
-    const plan = await getStripePlan(userId)
-    const rateLimit = plan.id === "PRO" ? proRateLimit : freeRateLimit
-    const result = await rateLimit.getRemaining(userId)
-    
-    return {
-      remaining: result.remaining,
-      reset: result.reset,
-    }
-  } catch (error) {
-    console.error('Error getting rate limit status:', error)
-    // Return default free plan values if there's an error
-    return {
-      remaining: 10,
-      reset: Date.now() + 24 * 60 * 60 * 1000, // 24 hours from now
-    }
+  const plan = await getStripePlan(userId)
+  const rateLimit = plan.id === "PRO" ? proRateLimit : freeRateLimit
+  const result = await rateLimit.getRemaining(userId)
+  
+  return {
+    remaining: result.remaining,
+    reset: result.reset,
   }
 }

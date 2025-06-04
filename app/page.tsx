@@ -15,13 +15,13 @@ export default async function Page() {
             Production Ready
           </Badge>
 
-          <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-gray-900 mb-6">
+          <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-foreground mb-6">
             NeonAuth + Stripe
             <br />
-            <span className="text-gray-600">v0 Template</span>
+            <span className="text-muted-foreground">v0 Template</span>
           </h1>
 
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
             Users can log in and pay to unlock premium features.
             <br />
             Give your idea to v0, turn this into your own product, and start
@@ -31,7 +31,7 @@ export default async function Page() {
           <Button className="mt-4" asChild>
             <Link href="/app">Open app</Link>
           </Button>
-          <p className="text-sm text-gray-500 mt-2">
+          <p className="text-sm text-muted-foreground mt-2">
             This may not work until the below steps are complete.
           </p>
         </div>
@@ -41,12 +41,12 @@ export default async function Page() {
       <DevChecklistPage />
 
       <footer className="mt-20 border-t pt-8 pb-16 text-center">
-        <p className="text-sm text-gray-500 font-mono">
+        <p className="text-sm text-muted-foreground font-mono">
           Engineered by{' '}
           <a
             href="https://x.com/jacobmparis"
             target="_blank"
-            className="text-black hover:underline"
+            className="text-foreground hover:underline"
           >
             Jacob Paris
           </a>{' '}

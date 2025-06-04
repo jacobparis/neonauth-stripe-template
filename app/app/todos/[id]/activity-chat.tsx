@@ -580,14 +580,14 @@ export function ActivityChat({
                   key={message.id}
                   className="flex items-start gap-3 py-1 px-2 text-sm"
                 >
-                  <Avatar className="h-6 w-6 ring-1 ring-gray-200 shadow-sm">
+                  <Avatar className="h-6 w-6 ring-1 ring-card shadow-sm">
                     <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                       <Bot className="h-3 w-3 text-white" />
                     </div>
                   </Avatar>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-muted-foreground">
                         {format(new Date(message.createdAt), 'MMM d, h:mm a')}
                       </span>
                     </div>
@@ -607,9 +607,9 @@ export function ActivityChat({
             return (
               <div
                 key={message.id}
-                className="flex items-center gap-3 py-1 px-2 text-sm text-gray-600 bg-gray-50/50 rounded-md"
+                className="flex items-center gap-3 py-1 px-2 text-sm text-muted-foreground hover:bg-muted/50 rounded-md"
               >
-                <Avatar className="h-6 w-6 ring-1 ring-white shadow-sm">
+                <Avatar className="h-6 w-6 ring-1 ring-card shadow-sm">
                   {message.type === 'ai' ? (
                     <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                       <Bot className="h-3 w-3 text-white" />
@@ -635,7 +635,7 @@ export function ActivityChat({
                     <span className="font-medium">{userName}</span>{' '}
                     {cleanContent.toLowerCase()}
                   </span>
-                  <span className="text-xs text-gray-400 ml-2">
+                  <span className="text-xs text-muted-foreground ml-2">
                     {format(new Date(message.createdAt), 'MMM d, h:mm a')}
                   </span>
                 </div>
@@ -653,7 +653,7 @@ export function ActivityChat({
             >
               {showHeader ? (
                 <div className="flex flex-col items-center">
-                  <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm">
+                  <Avatar className="h-8 w-8 ring-2 ring-card shadow-sm">
                     {message.type === 'ai' ? (
                       <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                         <Bot className="h-4 w-4 text-white" />
@@ -681,7 +681,7 @@ export function ActivityChat({
               <div className="flex-1 min-w-0">
                 {showHeader && (
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-gray-900">
+                    <span className="text-sm font-medium text-foreground">
                       {message.type === 'ai' ? (
                         <span className="flex items-center gap-1">
                           <Bot className="h-3 w-3" />
@@ -691,14 +691,16 @@ export function ActivityChat({
                         message.user?.name || message.user?.email || 'User'
                       )}
                     </span>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-muted-foreground">
                       {format(new Date(message.createdAt), 'PPp')}
                     </span>
                   </div>
                 )}
                 <div
                   className={`text-sm whitespace-pre-wrap ${
-                    message.type === 'ai' ? 'text-gray-700' : 'text-gray-700'
+                    message.type === 'ai'
+                      ? 'text-foreground'
+                      : 'text-foreground'
                   }`}
                 >
                   {message.type === 'ai'
@@ -734,7 +736,7 @@ export function ActivityChat({
         {isAiLoading && (
           <div className="flex gap-3 group">
             <div className="flex flex-col items-center">
-              <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm">
+              <Avatar className="h-8 w-8 ring-2 ring-card shadow-sm">
                 <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                   <Bot className="h-4 w-4 text-white" />
                 </div>
@@ -742,15 +744,15 @@ export function ActivityChat({
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-sm font-medium text-gray-900">
+                <span className="text-sm font-medium text-foreground">
                   <span className="flex items-center gap-1">
                     <Bot className="h-3 w-3" />
                     AI Assistant
                   </span>
                 </span>
-                <span className="text-xs text-gray-500">now</span>
+                <span className="text-xs text-muted-foreground">now</span>
               </div>
-              <div className="text-sm text-gray-700">
+              <div className="text-sm text-foreground">
                 <MessageReasoning isLoading={true} reasoning="" />
               </div>
             </div>
@@ -780,16 +782,18 @@ export function ActivityChat({
         <div className="mx-auto max-w-4xl p-4">
           <div className="relative w-full">
             {chatError && (
-              <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">
+              <div className="mb-2 p-2 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-sm text-red-600 dark:text-red-400">
                   AI assistant is currently unavailable. Please try again.
                 </p>
               </div>
             )}
 
             {rateLimitError && (
-              <div className="mb-2 p-2 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-600">{rateLimitError}</p>
+              <div className="mb-2 p-2 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-sm text-red-600 dark:text-red-400">
+                  {rateLimitError}
+                </p>
               </div>
             )}
 
@@ -798,7 +802,7 @@ export function ActivityChat({
                 value={inputValue}
                 onChange={handleTextareaChange}
                 placeholder="Ask the AI assistant anything about this task..."
-                className="min-h-[24px] max-h-[calc(75dvh)] resize-none rounded-xl !text-base bg-muted pb-16 dark:border-zinc-700"
+                className="min-h-[24px] max-h-[calc(75dvh)] resize-none rounded-xl !text-base bg-muted pb-16 dark:border-border"
                 rows={2}
                 disabled={isPending || isAiLoading || isSubmitting}
                 onKeyDown={(e) => {
@@ -820,7 +824,7 @@ export function ActivityChat({
                     isAiLoading ||
                     isSubmitting
                   }
-                  className="rounded-full p-1.5 h-fit border dark:border-zinc-600"
+                  className="rounded-full p-1.5 h-fit border dark:border-border"
                 >
                   {isAiLoading || isSubmitting ? (
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />

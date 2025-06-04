@@ -95,7 +95,7 @@ export function CommentsSectionClient({
           >
             {showHeader ? (
               <div className="flex flex-col items-center">
-                <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm">
+                <Avatar className="h-8 w-8 ring-2 ring-card shadow-sm">
                   <AvatarImage
                     src={
                       comment.userId === user.id
@@ -117,15 +117,15 @@ export function CommentsSectionClient({
             <div className="flex-1 min-w-0">
               {showHeader && (
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-medium text-gray-900">
+                  <span className="text-sm font-medium text-foreground">
                     {comment.user?.name || comment.user?.email}
                   </span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-muted-foreground">
                     {format(new Date(comment.createdAt), 'PPp')}
                   </span>
                 </div>
               )}
-              <p className="text-sm text-gray-700 whitespace-pre-wrap">
+              <p className="text-sm text-foreground whitespace-pre-wrap">
                 {comment.content}
               </p>
             </div>
@@ -134,8 +134,8 @@ export function CommentsSectionClient({
       })}
 
       {/* Add Comment Form */}
-      <div className="flex gap-3 mt-6 pt-4 border-t border-gray-200/40">
-        <Avatar className="h-8 w-8 ring-2 ring-white shadow-sm">
+      <div className="flex gap-3 mt-6 pt-4 border-t border-border">
+        <Avatar className="h-8 w-8 ring-2 ring-card shadow-sm">
           <AvatarImage
             src={user.profileImageUrl || undefined}
             alt={user.displayName || user.primaryEmail || ''}

@@ -17,7 +17,7 @@ export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, todoId, todoContext, previousActivity } = await req.json()
+    const { messages, todoId,  previousActivity } = await req.json()
 
     const user = await stackServerApp.getUser()
     if (!user) {

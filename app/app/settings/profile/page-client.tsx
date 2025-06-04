@@ -1,19 +1,19 @@
-"use client"
+'use client'
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Users, PaintbrushIcon as PaintBrush } from "lucide-react"
-import { useState } from "react"
-import { useUser } from "@stackframe/stack"
-import Image from "next/image"
-import { ImageInput } from "@/components/image-input"
-import { ThemeSelect } from "@/components/theme-toggle"
-import { Separator } from "@/components/ui/separator"
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Users, PaintbrushIcon as PaintBrush } from 'lucide-react'
+import { useState } from 'react'
+import { useUser } from '@stackframe/stack'
+import Image from 'next/image'
+import { ImageInput } from '@/components/image-input'
+import { ThemeSelect } from '@/components/theme-toggle'
+import { Separator } from '@/components/ui/separator'
 
 export function ProfilePageClient() {
-  const user = useUser({ or: "redirect" })
-  const [profileError, setProfileError] = useState("")
+  const user = useUser({ or: 'redirect' })
+  const [profileError, setProfileError] = useState('')
   const [profileImage, setProfileImage] = useState<string | null>(
     user.profileImageUrl,
   )
@@ -29,8 +29,8 @@ export function ProfilePageClient() {
             <div className="relative h-24 w-24 overflow-hidden rounded-full border-4 border-background bg-muted flex items-center justify-center">
               {profileImage ? (
                 <Image
-                  src={profileImage || "/placeholder.svg"}
-                  alt={user.displayName || "User avatar"}
+                  src={profileImage || '/placeholder.svg'}
+                  alt={user.displayName || 'User avatar'}
                   className="object-cover"
                   fill
                 />
@@ -42,7 +42,7 @@ export function ProfilePageClient() {
               className="hidden"
               maxBytes={100_000}
               onChange={(dataUrl) => {
-                setProfileError("")
+                setProfileError('')
                 setProfileImage(dataUrl) // Update local state immediately
                 user.update({ profileImageUrl: dataUrl }) // Still update on the server
               }}
@@ -59,7 +59,7 @@ export function ProfilePageClient() {
             const displayName = form.displayName?.value
             if (!displayName) {
               // Backend supports users without display names, can choose to block them here
-              setProfileError("Display name is required")
+              setProfileError('Display name is required')
               return
             }
 
@@ -74,14 +74,16 @@ export function ProfilePageClient() {
               <Input
                 id="displayName"
                 name="displayName"
-                defaultValue={user.displayName || ""}
+                defaultValue={user.displayName || ''}
                 placeholder="Enter your name"
                 className="mt-1"
-                onBlur={() => setProfileError("")}
+                onBlur={() => setProfileError('')}
               />
             </div>
             <div className="flex justify-end">
-              <Button type="submit">Save</Button>
+              <Button type="submit" variant="outline">
+                Save
+              </Button>
             </div>
           </div>
           <div className="mt-1">
