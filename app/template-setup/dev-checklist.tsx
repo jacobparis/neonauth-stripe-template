@@ -51,7 +51,6 @@ export async function DevChecklistPage() {
     !!process.env.STACK_SECRET_SERVER_KEY,
     !!process.env.VERCEL_URL,
     !!process.env.NEXT_PUBLIC_VERCEL_URL,
-    !!process.env.VERCEL_OIDC_TOKEN,
     !!process.env.XAI_API_KEY,
     !!process.env.KV_URL,
     !!process.env.KV_REST_API_TOKEN,
@@ -649,31 +648,6 @@ export async function DevChecklistPage() {
                         {process.env.NEXT_PUBLIC_VERCEL_URL}
                       </span>
                     )}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start">
-                {!!process.env.VERCEL_OIDC_TOKEN ? (
-                  <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
-                ) : (
-                  <Circle className="h-5 w-5 text-muted-foreground mt-0.5 mr-3 flex-shrink-0" />
-                )}
-                <div>
-                  <EnvVar
-                    name="VERCEL_OIDC_TOKEN"
-                    exists={!!process.env.VERCEL_OIDC_TOKEN}
-                  />
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    OIDC token for vercel-queue authentication. See{' '}
-                    <a
-                      href="https://vercel.com/docs/oidc"
-                      target="_blank"
-                      className="text-foreground underline hover:no-underline"
-                      rel="noreferrer"
-                    >
-                      OIDC documentation
-                    </a>
                   </p>
                 </div>
               </div>

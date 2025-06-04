@@ -2,12 +2,16 @@ import { CallbackConfig, VQSClient, createTopic, parseCallbackRequest } from "ve
 import { processTask, QueueTask } from "@/app/api/queue/vercel-queue"
 import { NextRequest } from "next/server"
 
+async function getVercelQueueClient() {
+  return process.env.VERCEL_OIDC_TOKEN ? new VQSClient({
+    token: process.env.VERCEL_OIDC_TOKEN!,
+  }) : await VQSClient.fromVercelFunction()
+}
+
 export async function POST(request: NextRequest) {
   const { queueName: topic, messageId, consumerGroup } = await parseCallbackRequest(request)
 
-  const client = new VQSClient({
-    token: process.env.VERCEL_OIDC_TOKEN!,
-  })
+  const client = await getVercelQueueClient()
 
   const topicClient = createTopic<QueueTask>(client, topic)
   const cg = topicClient.consumerGroup(consumerGroup)
@@ -30,9 +34,7 @@ export async function publishTask<T extends QueueTask>(task: T, options?: {
   retentionSeconds?: number;
   callbacks?: Record<string, CallbackConfig>;
 }) {
-  const client = new VQSClient({
-    token: process.env.VERCEL_OIDC_TOKEN!,
-  })
+  const client = await getVercelQueueClient()
 
   const topic = createTopic<QueueTask>(client, "task-queue")
 
