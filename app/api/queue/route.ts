@@ -48,7 +48,7 @@ export async function publishTask<T extends QueueTask>(task: T, options?: {
     ...options,
     callbacks: {
       'task': {
-        url: process.env.NODE_ENV==='development' ? `http://localhost:${process.env.PORT}/api/queue` : `${process.env.VERCEL_URL}/api/queue`,
+        url: process.env.NODE_ENV==='development' ? `http://localhost:${process.env.PORT}/api/queue` : `https://${process.env.VERCEL_URL}/api/queue`,
         delay: 0,
         frequency: 10
       }
