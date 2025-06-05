@@ -43,12 +43,12 @@ export async function publishTask<T extends QueueTask>(task: T, options?: {
 
   const topic = createTopic<QueueTask>(client, "task-queue")
 
-  console.log("Publishing task", `https://${process.env.VERCEL_URL}/api/queue`)
+  console.log("Publishing task", `https://v0-neonauth-app-creation.vercel.app/api/queue`)
   await topic.publish(task, {
     ...options,
     callbacks: {
       'task': {
-        url: process.env.NODE_ENV==='development' ? `http://localhost:${process.env.PORT}/api/queue` : `https://${process.env.VERCEL_URL}/api/queue`,
+        url: process.env.NODE_ENV==='development' ? `http://localhost:${process.env.PORT}/api/queue` : `https://v0-neonauth-app-creation.vercel.app/api/queue`,
         delay: 0,
         frequency: 10
       }
