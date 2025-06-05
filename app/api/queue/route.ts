@@ -43,6 +43,7 @@ export async function publishTask<T extends QueueTask>(task: T, options?: {
 
   const topic = createTopic<QueueTask>(client, "task-queue")
 
+  console.log("Publishing task", `${process.env.VERCEL_URL}/api/queue`)
   await topic.publish(task, {
     ...options,
     callbacks: {
