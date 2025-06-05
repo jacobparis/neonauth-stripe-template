@@ -33,6 +33,9 @@ Generate a helpful response with:
 
     const { description, questions } = object
 
+    console.log("Generated description", description)
+    console.log("Generated questions", questions)
+
     // Update the todo with the generated description
     await db
       .update(todos)
