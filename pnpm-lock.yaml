@@ -300,8 +300,8 @@ importers:
         specifier: ^0.9.6
         version: 0.9.6(@types/react-dom@19.0.0)(@types/react@19.0.0)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
       vercel-queue:
-        specifier: ^0.0.5
-        version: 0.0.5
+        specifier: ^0.0.19
+        version: 0.0.19
       zod:
         specifier: latest
         version: 3.24.4
@@ -6154,8 +6154,8 @@ packages:
       react: ^16.8 || ^17.0 || ^18.0
       react-dom: ^16.8 || ^17.0 || ^18.0
 
-  vercel-queue@0.0.5:
-    resolution: {integrity: sha512-zTewk/CHCa56SqQiGyLhJr5Mc4JKD1v50SUm1IBSIm5Tva44d+rD8cW+orgM0Yd/pLH/aeabM9rkcM1dHFPCnA==}
+  vercel-queue@0.0.19:
+    resolution: {integrity: sha512-z8FeXSnMp6Hyu0a6fAojsyOF2hpfM31zVkJtgs3FJI/YIAmo70DEwRGdJfkuad2PqKQbY7UF9Dtj61Hf4iT5NQ==}
     engines: {node: '>=22.0.0'}
 
   victory-vendor@36.9.2:
@@ -12980,7 +12980,7 @@ snapshots:
       - '@types/react'
       - '@types/react-dom'
 
-  vercel-queue@0.0.5:
+  vercel-queue@0.0.19:
     dependencies:
       mixpart: 0.0.4
 

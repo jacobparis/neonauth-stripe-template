@@ -3,9 +3,14 @@ import { processTask, QueueTask } from "@/app/api/queue/vercel-queue"
 import { NextRequest } from "next/server"
 
 async function getVercelQueueClient() {
-  return process.env.VERCEL_OIDC_TOKEN ? new VQSClient({
-    token: process.env.VERCEL_OIDC_TOKEN!,
-  }) : await VQSClient.fromVercelFunction()
+  if (process.env.VERCEL_OIDC_TOKEN) {
+    console.log("Using VERCEL_OIDC_TOKEN", process.env.VERCEL_OIDC_TOKEN)
+    return new VQSClient({
+      token: process.env.VERCEL_OIDC_TOKEN,
+    })
+  }
+
+  return await VQSClient.fromVercelFunction()
 }
 
 export async function POST(request: NextRequest) {
@@ -42,7 +47,7 @@ export async function publishTask<T extends QueueTask>(task: T, options?: {
     ...options,
     callbacks: {
       'task': {
-        url: `${process.env.VERCEL_URL}/api/queue`,
+        url: process.env.NODE_ENV==='development' ? `http://localhost:${process.env.PORT}/api/queue` : `${process.env.VERCEL_URL}/api/queue`,
         delay: 0,
         frequency: 10
       }

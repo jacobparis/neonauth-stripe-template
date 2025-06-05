@@ -106,7 +106,7 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^0.9.6",
-    "vercel-queue": "^0.0.5",
+    "vercel-queue": "^0.0.19",
     "zod": "latest"
   },
   "devDependencies": {
