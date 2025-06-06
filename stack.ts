@@ -1,14 +1,11 @@
 import "server-only"
 import { StackServerApp } from "@stackframe/stack"
 import { z } from "zod"
-import { createRemoteJWKSet } from "jose/jwks/remote"
-import { jwtVerify } from "jose/jwt/verify"
+import { createRemoteJWKSet, jwtVerify } from "jose"
 import type { ReadonlyRequestCookies } from "next/dist/server/web/spec-extension/adapters/request-cookies"
 import type { RequestCookies } from "next/dist/server/web/spec-extension/request-cookies"
 
-// Server-side Stack app only
 export const stackServerApp = new StackServerApp({
-  serverKey: process.env.STACK_SECRET_SERVER_KEY || "",
   tokenStore: "nextjs-cookie",
   redirectMethod: "nextjs",
   urls: {
