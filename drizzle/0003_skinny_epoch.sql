@@ -1,1 +1,0 @@
-ALTER TABLE "users_sync" ALTER COLUMN "image" SET DATA TYPE text;
