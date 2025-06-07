@@ -5,7 +5,6 @@ import { db } from '@/lib/db'
 import { sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { neon } from '@neondatabase/serverless'
-import { migrate } from 'drizzle-orm/neon-http/migrator'
 import { drizzle } from 'drizzle-orm/neon-http'
 import * as schema from '@/drizzle/schema'
 
@@ -320,12 +319,49 @@ export async function runMigrations(formData: FormData): Promise<void> {
     // verify the connection is working
     await db.execute(sql`SELECT 1`)
 
-    // run the migrations
-    console.log('Running migrations...')
-    await migrate(db, {
-      migrationsFolder: 'drizzle',
-      migrationsTable: 'drizzle_migrations',
-    })
+    // Run migrations manually
+    console.log('Running migrations manually...')
+
+    // Create users_sync table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS users_sync (
+        id text PRIMARY KEY,
+        email text NOT NULL,
+        display_name text,
+        profile_image_url text,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `)
+
+    // Create todos table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS todos (
+        id text PRIMARY KEY,
+        user_id text NOT NULL,
+        title text NOT NULL,
+        completed boolean DEFAULT false NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users_sync(id) ON DELETE CASCADE
+      )
+    `)
+
+    // Create comments table
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS comments (
+        id text PRIMARY KEY,
+        todo_id text NOT NULL,
+        user_id text NOT NULL,
+        content text NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL,
+        FOREIGN KEY (todo_id) REFERENCES todos(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users_sync(id) ON DELETE CASCADE
+      )
+    `)
+
+    console.log('Migrations completed successfully')
 
     // Revalidate the page to show updated migration status
     revalidatePath('/dev-checklist')
