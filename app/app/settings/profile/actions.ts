@@ -130,8 +130,9 @@ export async function sendVerificationEmail(formData: FormData) {
     const channel = channels.find((c) => c.id === id)
 
     if (channel) {
-      // const callbackUrl = `${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"}/app/settings/account-verify`
-      await channel.sendVerificationEmail()
+      const callbackUrl = `${process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000"}/app/settings/account-verify`
+      // @ts-expect-error - StackAuth types are not up to date, this supports a callbackUrl
+      await channel.sendVerificationEmail({ callbackUrl })
     }
 
     void revalidatePath("/app/settings/account")

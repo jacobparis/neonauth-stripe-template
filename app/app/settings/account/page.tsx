@@ -4,7 +4,7 @@ import { getStripeCustomerId, getStripeCustomer } from '@/lib/stripe'
 import { getStripePlan } from '@/app/api/stripe/plans'
 import { getRateLimitStatus } from '@/lib/rate-limit'
 
-export default async function AccountPage() {
+export default async function AccountPageServer() {
   const user = await stackServerApp.getUser({ or: 'redirect' })
 
   const contactChannels = await user?.listContactChannels()

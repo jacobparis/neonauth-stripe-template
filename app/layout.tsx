@@ -20,6 +20,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
+      style={{ scrollbarGutter: 'stable' }}
       className={`${GeistSans.variable} ${GeistMono.variable}`}
     >
       <body>

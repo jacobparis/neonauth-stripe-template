@@ -8,6 +8,7 @@ import type { RequestCookies } from "next/dist/server/web/spec-extension/request
 export const stackServerApp = new StackServerApp({
   tokenStore: "nextjs-cookie",
   redirectMethod: "nextjs",
+  
   urls: {
     afterSignIn: "/app",
     afterSignUp: "/app",

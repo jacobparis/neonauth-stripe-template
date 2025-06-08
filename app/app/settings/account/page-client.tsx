@@ -307,7 +307,9 @@ export function AccountPageClient({
                 email: formData.get('email') as string,
               })
               formRef.current?.reset()
-              await addContactChannel(formData)
+              startTransition(async () => {
+                await addContactChannel(formData)
+              })
             }}
             className="space-y-4"
           >
