@@ -55,7 +55,6 @@ export function ActivityChat({
   initialComments,
   user,
   todo,
-  stateHandlers,
   rateLimitStatus,
 }: {
   todoId: string
@@ -70,7 +69,6 @@ export function ActivityChat({
     title: string
     description: string | null
   }
-  stateHandlers?: any
   rateLimitStatus: {
     remaining: number
     reset: number
@@ -84,7 +82,7 @@ export function ActivityChat({
 
   // Get state handlers from context
   const contextStateHandlers = useTodoState()
-  const activeStateHandlers = stateHandlers || contextStateHandlers
+  const activeStateHandlers = contextStateHandlers
 
   // Auto-scroll functionality
   const messagesEndRef = useRef<HTMLDivElement>(null)

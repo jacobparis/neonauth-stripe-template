@@ -1,10 +1,9 @@
 import { TodosPageClient } from './page-client'
-import { stackServerApp } from '@/stack'
 import { getTodos } from '@/lib/actions'
 import { getRateLimitStatus } from '@/lib/rate-limit'
 import { Suspense } from 'react'
 import TodosLoading from './loading'
-import { cacheTag } from 'next/dist/server/use-cache/cache-tag'
+import { unstable_cacheTag as cacheTag } from 'next/cache'
 
 export async function TodosPageServer({ userId }: { userId: string }) {
   'use cache'

@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch full todo details for context
-    const todo = await getTodo(todoId)
+    const todo = await getTodo({ userId: user.id, todoId })
 
     if (!todo) {
       return new Response('Todo not found', { status: 404 })

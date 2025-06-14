@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { db } from "@/lib/db"
 import { todos, users_sync, comments } from "@/drizzle/schema"
-import { eq, desc, count, isNull } from "drizzle-orm"
+import { eq, desc, count, isNull, and } from "drizzle-orm"
 import { stackServerApp, getAccessToken } from "@/stack"
 import { cookies } from "next/headers"
 import { createNotification, watchTask, notifyWatchers, unwatchTask } from '@/app/api/notifications/notifications'
@@ -83,19 +83,11 @@ export async function getTodos(userId: string) {
   }
 }
 
-export async function getTodo(id: string) {
-  if (!id || typeof id !== 'string') {
-    throw new Error("Invalid todo ID")
-  }
-
-  const user = await stackServerApp.getUser()
-  if (!user) {
-    throw new Error("Not authenticated")
-  }
+export async function getTodo({ userId, todoId }: { userId: string, todoId: string }) {
 
   try {
     const item = await db.query.todos.findFirst({
-      where: eq(todos.id, id)
+      where: eq(todos.id, todoId)
     })
     
     if (!item) {
@@ -103,7 +95,7 @@ export async function getTodo(id: string) {
     }
 
     // Check ownership
-    if (item.userId !== user.id) {
+    if (item.userId !== userId) {
       throw new Error("Access denied")
     }
     
@@ -121,6 +113,21 @@ export async function getUsers() {
   } catch (error) {
     console.error("Failed to fetch users:", error)
     return []
+  }
+}
+
+export async function getUserById(userId: string) {
+  console.log(userId)
+  try {
+    const result = await db
+      .select()
+      .from(users_sync)
+      .where(and(eq(users_sync.id, userId), isNull(users_sync.deleted_at)))
+
+    return result[0] || null
+  } catch (error) {
+    console.error("Failed to fetch user:", error)
+    return null
   }
 }
 
@@ -343,24 +350,15 @@ export async function toggleWatchTodo(formData: FormData) {
   }
 }
 
-export async function getComments(todoId: string) {
-  const user = await stackServerApp.getUser()
-  if (!user) {
-    throw new Error("Not authenticated")
-  }
-
+export async function getComments({todoId, userId}: {todoId: string, userId: string}) {
   try {
     // First check if user owns the todo
     const todo = await db.query.todos.findFirst({
-      where: eq(todos.id, todoId)
+      where: and(eq(todos.id, todoId), eq(todos.userId, userId))
     })
 
     if (!todo) {
       throw new Error("Todo not found")
-    }
-
-    if (todo.userId !== user.id) {
-      throw new Error("Access denied")
     }
 
     const commentList = await db.query.comments.findMany({

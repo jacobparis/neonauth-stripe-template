@@ -170,14 +170,12 @@ interface GetNotificationsSinceParams {
 export async function getNotificationsSince({ userId, version }: GetNotificationsSinceParams) {
   try {
     // Get all notifications after the version timestamp
-    console.log('version', version)
     const results = await redis.zrange('notifications', version, -1, {
       rev: true,
       offset: 0,
       count: 50
     })
 
-    console.log('results', results)
     const notifications = []
     let latestVersion = version
 
