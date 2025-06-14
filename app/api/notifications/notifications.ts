@@ -180,6 +180,10 @@ export async function getNotificationsSince({ userId, version }: GetNotification
     let latestVersion = version
 
     for (const result of results) {
+      if (typeof result.taskId === 'number') {
+        result.taskId = String(result.taskId)
+      }
+      
       const notification = NotificationSchema.parse(result)
       if (notification.userId === userId) {
         notifications.push(notification)

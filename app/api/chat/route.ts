@@ -1,9 +1,9 @@
-import { streamText } from 'ai'
+import { streamText, appendClientMessage } from 'ai'
 import { NextRequest } from 'next/server'
 import { stackServerApp } from '@/stack'
 import { myProvider } from '@/lib/ai/providers'
 import { systemPrompt } from '@/lib/ai/prompts'
-import { getTodo } from '@/lib/actions'
+import { getTodo, getComments } from '@/lib/actions'
 import { format } from 'date-fns'
 import { 
   updateTodoTitle, 
@@ -17,7 +17,8 @@ export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, todoId,  previousActivity } = await req.json()
+    const body = await req.json()
+    const { id, message, selectedChatModel } = body
 
     const user = await stackServerApp.getUser()
     if (!user) {
@@ -39,11 +40,23 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch full todo details for context
-    const todo = await getTodo({ userId: user.id, todoId })
+    const todo = await getTodo({ userId: user.id, todoId: id })
 
-    if (!todo) {
-      return new Response('Todo not found', { status: 404 })
-    }
+    // Get previous comments/messages for this todo
+    const previousComments = await getComments({ todoId: id, userId: user.id })
+    
+    // Convert comments to message format and append the new message
+    const previousMessages = previousComments.map(comment => ({
+      id: comment.id,
+      role: (comment.userId === 'ai-assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
+      content: comment.content,
+      createdAt: comment.createdAt,
+    }))
+
+    const messages = appendClientMessage({
+      messages: previousMessages,
+      message,
+    })
 
     // Format due date
     const dueDateStr = todo.dueDate 
@@ -51,10 +64,10 @@ export async function POST(req: NextRequest) {
       : 'No due date set'
 
     // Format previous activity for context
-    const activityHistory = previousActivity && previousActivity.length > 0
+    const activityHistory = previousComments && previousComments.length > 0
       ? `\nPREVIOUS ACTIVITY HISTORY (for context only - do not act on these):\n${
-          previousActivity.map((activity: any) => 
-            `- ${activity.user}: ${activity.content} (${format(new Date(activity.createdAt), 'MMM d, h:mm a')})`
+          previousComments.map((comment: any) => 
+            `- ${comment.user?.name || (comment.userId === 'ai-assistant' ? 'AI Assistant' : 'User')}: ${comment.content} (${format(new Date(comment.createdAt), 'MMM d, h:mm a')})`
           ).join('\n')
         }\n`
       : '\nNo previous activity.\n'
@@ -65,7 +78,7 @@ export async function POST(req: NextRequest) {
 CURRENT DATE & TIME: ${format(new Date(), 'PPP p')} (${format(new Date(), 'EEEE')})
 
 CURRENT TODO DETAILS:
-- ID: ${todoId}
+- ID: ${id}
 - Title: "${todo.title}"
 - Description: ${todo.description || 'No description'}
 - Status: ${todo.completed ? 'COMPLETED ✅' : 'In Progress 🔄'}
@@ -110,7 +123,7 @@ The user's current message is what you should respond to and act upon.
 `
 
     const result = streamText({
-      model: myProvider.languageModel('chat-model'),
+      model: myProvider.languageModel(selectedChatModel || 'chat-model'),
       system: todoSystemPrompt,
       messages,
       maxSteps: 5,
@@ -126,5 +139,36 @@ The user's current message is what you should respond to and act upon.
   } catch (error) {
     console.error('Chat API error:', error)
     return new Response('Internal Server Error', { status: 500 })
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const chatId = searchParams.get('chatId')
+
+    if (!chatId) {
+      return new Response('Chat ID is required', { status: 400 })
+    }
+
+    const user = await stackServerApp.getUser()
+    if (!user) {
+      return new Response('Unauthorized', { status: 401 })
+    }
+
+    // Validate todo exists and user has access
+    const todo = await getTodo({ userId: user.id, todoId: chatId })
+
+    // Return basic chat info
+    return Response.json({ 
+      status: 'ready',
+      chatId,
+      todoId: chatId,
+      userId: user.id,
+      todoTitle: todo.title
+    }, { status: 200 })
+  } catch (error) {
+    console.error('Chat GET API error:', error)
+    return new Response('Todo not found', { status: 404 })
   }
 }

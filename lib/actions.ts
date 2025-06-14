@@ -85,6 +85,7 @@ export async function getTodos(userId: string) {
 
 export async function getTodo({ userId, todoId }: { userId: string, todoId: string }) {
 
+  console.log(userId, todoId)
   try {
     const item = await db.query.todos.findFirst({
       where: eq(todos.id, todoId)

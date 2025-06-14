@@ -1,15 +1,15 @@
-"use client"
+'use client'
 
-import { SignupForm } from "@/app/components/signup-form"
-import { useRouter, useSearchParams } from "next/navigation"
+import { SignupForm } from '@/components/signup-form'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function SignUpPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectUrl = searchParams.get("redirect") || "/"
+  const redirectUrl = searchParams.get('redirect') || '/'
 
   const handleToggleForm = () => {
-    router.push(`/sign-in${redirectUrl ? `?redirect=${redirectUrl}` : ""}`)
+    router.push(`/sign-in${redirectUrl ? `?redirect=${redirectUrl}` : ''}`)
   }
 
   return (

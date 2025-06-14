@@ -34,7 +34,7 @@ import {
   AlertDialogFooter,
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog'
-import { SubscriptionCard } from '@/app/components/subscription-card'
+import { SubscriptionCard } from '@/components/subscription-card'
 
 interface ContactChannel {
   id: string
