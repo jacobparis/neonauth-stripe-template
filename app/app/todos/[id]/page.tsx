@@ -25,65 +25,56 @@ export default async function TodoItemPage({
     notFound()
   }
 
-  try {
-    const user = await stackServerApp.getUser({ or: 'redirect' })
+  const user = await stackServerApp.getUser({ or: 'redirect' })
 
-    const [todo, rateLimitStatus] = await Promise.all([
-      getTodo(todoId),
-      getRateLimitStatus(user.id),
-    ])
+  const [todo, rateLimitStatus] = await Promise.all([
+    getTodo(todoId),
+    getRateLimitStatus(user.id),
+  ])
 
-    if (!todo) {
-      notFound()
-    }
-
-    return (
+  return (
+    <div>
+      {/* Back button */}
       <div>
-        {/* Back button */}
-        <div>
-          <Button variant="outline" asChild size="sm">
-            <Link href="/app/todos">
-              <ArrowLeft className="h-5 w-5" />
-              <span>Back to todos</span>
-            </Link>
-          </Button>
+        <Button variant="outline" asChild size="sm">
+          <Link href="/app/todos">
+            <ArrowLeft className="h-5 w-5" />
+            <span>Back to todos</span>
+          </Link>
+        </Button>
+      </div>
+
+      <TodoStateProvider todo={todo}>
+        <div className="mt-8">
+          <TodoItemPageClient todo={todo} />
         </div>
 
-        <TodoStateProvider todo={todo}>
-          <div className="mt-8">
-            <TodoItemPageClient todo={todo} />
+        {/* Activity Section */}
+        <div className="mt-16">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-foreground tracking-wide uppercase">
+              Activity
+            </h3>
+
+            <WatchButton todoId={todo.id} />
           </div>
 
-          {/* Activity Section */}
-          <div className="mt-16">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground tracking-wide uppercase">
-                Activity
-              </h3>
-
-              <WatchButton todoId={todo.id} />
-            </div>
-
-            <div className="mt-6">
-              <Suspense
-                fallback={
-                  <div className="text-sm text-muted-foreground">
-                    Loading activity...
-                  </div>
-                }
-              >
-                <EnhancedActivitySection
-                  todo={todo}
-                  rateLimitStatus={rateLimitStatus}
-                />
-              </Suspense>
-            </div>
+          <div className="mt-6">
+            <Suspense
+              fallback={
+                <div className="text-sm text-muted-foreground">
+                  Loading activity...
+                </div>
+              }
+            >
+              <EnhancedActivitySection
+                todo={todo}
+                rateLimitStatus={rateLimitStatus}
+              />
+            </Suspense>
           </div>
-        </TodoStateProvider>
-      </div>
-    )
-  } catch (error) {
-    console.error('Error loading todo page:', error)
-    notFound()
-  }
+        </div>
+      </TodoStateProvider>
+    </div>
+  )
 }

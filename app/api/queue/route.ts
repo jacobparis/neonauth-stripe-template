@@ -1,59 +1,29 @@
-import { CallbackConfig, VQSClient, createTopic, parseCallbackRequest } from "vercel-queue"
+import { verifySignatureAppRouter } from "@upstash/qstash/nextjs"
+import { Client } from "@upstash/qstash"
 import { processTask, QueueTask } from "@/app/api/queue/vercel-queue"
-import { NextRequest } from "next/server"
 
-async function getVercelQueueClient() {
-  if (process.env.VERCEL_OIDC_TOKEN) {
-    console.log("Using VERCEL_OIDC_TOKEN", process.env.VERCEL_OIDC_TOKEN)
-    return new VQSClient({
-      token: process.env.VERCEL_OIDC_TOKEN,
-    })
-  }
-
-  return await VQSClient.fromVercelFunction()
-}
-
-export async function POST(request: NextRequest) {
-  const { queueName: topic, messageId, consumerGroup } = await parseCallbackRequest(request)
-
-  const client = await getVercelQueueClient()
-
-  const topicClient = createTopic<QueueTask>(client, topic)
-  const cg = topicClient.consumerGroup(consumerGroup)
-  
-  if (consumerGroup === 'task') {
-    await cg.receiveMessage(messageId, async (message) => {
-      console.log(`Processing: ${message.payload.type}`)
-      await processTask(message.payload)
-    })
-
-    return Response.json({ message: "Queue processing completed" }, { status: 200 })
-  } 
-
-  return Response.json({ error: "Invalid consumer group" }, { status: 400 })
-}
-
+export const POST = verifySignatureAppRouter(async (request: Request) => {
+  const task = (await request.json()) as QueueTask
+  console.log(`Processing: ${task.type}`)
+  await processTask(task)
+  return Response.json({ message: "Queue processing completed" })
+})
 
 export async function publishTask<T extends QueueTask>(task: T, options?: {
-  idempotencyKey?: string;
-  retentionSeconds?: number;
-  callbacks?: Record<string, CallbackConfig>;
+  delaySeconds?: number
 }) {
-  const client = await getVercelQueueClient()
+  const client = new Client({ token: process.env.QSTASH_TOKEN! })
 
-  const topic = createTopic<QueueTask>(client, "task-queue")
+  const url =
+    process.env.NODE_ENV === "development"
+      ? `http://localhost:${process.env.PORT}/api/queue`
+      : `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/api/queue`
 
-  console.log("Publishing task", `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/api/queue`)
-  await topic.publish(task, {
-    ...options,
-    callbacks: {
-      'task': {
-        url: process.env.NODE_ENV==='development' ? `http://localhost:${process.env.PORT}/api/queue` : `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}/api/queue`,
-        delay: 0,
-        frequency: 10
-      }
-    }
+  await client.publishJSON({
+    url,
+    body: task,
+    delay: options?.delaySeconds
   })
-  
+
   return { success: true }
 }

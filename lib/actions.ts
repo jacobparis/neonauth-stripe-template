@@ -72,14 +72,9 @@ Rules:
   }
 }
 
-export async function getTodos() {
-  const user = await stackServerApp.getUser()
-  if (!user) {
-    throw new Error("Not authenticated")
-  }
-
+export async function getTodos(userId: string) {
   try {
-    const items = await db.select().from(todos).where(eq(todos.userId, user.id)).orderBy(todos.id)
+    const items = await db.select().from(todos).where(eq(todos.userId, userId)).orderBy(todos.id)
     console.log(items)
     return items
   } catch (error) {

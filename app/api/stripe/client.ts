@@ -4,7 +4,7 @@
  */
 import { createStripeCustomer, getStripeCustomerId, stripe } from "@/lib/stripe"
 import { redirect } from "next/navigation"
-import { plansFlag } from "./plans"
+import { getPlans } from "./plans"
 
 export async function redirectToCheckout({
   userId,
@@ -28,7 +28,7 @@ export async function redirectToCheckout({
     stripeCustomerId = customer.id
   }
 
-  const plans = await plansFlag()
+  const plans = await getPlans()
   const checkoutSession = await stripe.checkout.sessions.create({
     customer: stripeCustomerId,
     line_items: [

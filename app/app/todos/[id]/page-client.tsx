@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -22,6 +22,7 @@ export function TodoItemPageClient({ todo }: { todo: Todo }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [isCalendarOpen, setIsCalendarOpen] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Get state from context
   const {
@@ -34,6 +35,18 @@ export function TodoItemPageClient({ todo }: { todo: Todo }) {
     handleUpdateDueDate: contextHandleUpdateDueDate,
     handleToggleCompleted,
   } = useTodoState()
+
+  const autoResize = () => {
+    const textarea = textareaRef.current
+    if (textarea) {
+      textarea.style.height = 'auto'
+      textarea.style.height = `${textarea.scrollHeight}px`
+    }
+  }
+
+  useEffect(() => {
+    autoResize()
+  }, [description])
 
   const handleUpdateDueDate = (newDate: Date | undefined) => {
     contextHandleUpdateDueDate(newDate)
@@ -66,13 +79,22 @@ export function TodoItemPageClient({ todo }: { todo: Todo }) {
           {/* Description */}
           <div className="mt-2">
             <Textarea
+              ref={textareaRef}
               name="description"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onBlur={(e) => e.target.form?.requestSubmit()}
+              onChange={(e) => {
+                setDescription(e.target.value)
+                autoResize()
+              }}
+              onBlur={(e) => {
+                const input = e.target
+                if (input.value !== description) {
+                  const form = input.form
+                  form?.requestSubmit()
+                }
+              }}
               placeholder="Add a description..."
-              className="w-full p-4 bg-muted/50 rounded-xl border border-border hover:bg-muted/80 focus:bg-card focus:border-border transition-all duration-200 resize-none min-h-[60px] text-base font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-              rows={3}
+              className="w-full p-4 rounded-xl resize-none border-none hover:bg-muted/80 focus:bg-card focus:border-border transition-all duration-200 min-h-[60px] text-base font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 overflow-hidden"
             />
           </div>
 
