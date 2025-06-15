@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { db } from "@/lib/db"
 import { todos, users_sync, comments } from "@/drizzle/schema"
 import { eq, desc, count, isNull, and } from "drizzle-orm"
@@ -74,11 +74,51 @@ Rules:
 
 export async function getTodos(userId: string) {
   try {
-    const items = await db.select().from(todos).where(eq(todos.userId, userId)).orderBy(todos.id)
-    console.log(items)
-    return items
+    const items = await db.select().from(todos).where(and(eq(todos.userId, userId), isNull(todos.deletedAt))).orderBy(todos.id)
+    
+    // Filter out overdue completed items (they should be archived)
+    const now = new Date()
+    const activeTodos = items.filter(todo => {
+      // If it's completed and overdue, it should be archived
+      if (todo.completed && todo.dueDate && todo.dueDate < now) {
+        return false
+      }
+      return true
+    })
+    
+    console.log(activeTodos)
+    return activeTodos
   } catch (error) {
     console.error("Failed to fetch todos:", error)
+    return []
+  }
+}
+
+export async function getArchivedTodos(userId: string) {
+  try {
+    const items = await db.select().from(todos).where(eq(todos.userId, userId)).orderBy(todos.id)
+    
+    // Filter for archived items:
+    // 1. Manually deleted (deletedAt is not null)
+    // 2. Overdue completed items (completed=true AND dueDate < now)
+    const now = new Date()
+    const archivedItems = items.filter(todo => {
+      // Manually deleted
+      if (todo.deletedAt) {
+        return true
+      }
+      
+      // Overdue completed items
+      if (todo.completed && todo.dueDate && todo.dueDate < now) {
+        return true
+      }
+      
+      return false
+    })
+    
+    return archivedItems
+  } catch (error) {
+    console.error("Failed to fetch archived todos:", error)
     return []
   }
 }
@@ -193,6 +233,11 @@ export async function addTodo(formData: FormData) {
     }
 
     revalidatePath("/")
+    
+    // Add cache tag revalidation
+    revalidateTag(`${user.id}:todos`)
+    revalidateTag(`${user.id}:archived-todos`)
+    
     return { success: true }
   } catch (error) {
     console.error("Failed to add todo:", error)
@@ -291,6 +336,12 @@ export async function updateTodo(formData: FormData) {
     }
 
     revalidatePath('/')
+    
+    // Add cache tag revalidation
+    revalidateTag(`${user.id}:todos`)
+    revalidateTag(`${user.id}:archived-todos`)
+    
+    return { success: true }
   } catch (error) {
     console.error('Failed to update todo:', error)
     throw new Error('Failed to update todo')

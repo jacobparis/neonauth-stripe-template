@@ -2,7 +2,7 @@
 
 import { db } from "@/lib/db"
 import { todos } from "@/drizzle/schema"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { stackServerApp } from "@/stack"
 import { nanoid } from 'nanoid'
 
@@ -231,5 +231,10 @@ export async function createSampleTodos() {
   })))
   
   revalidatePath("/app/todos")
+  
+  // Add cache tag revalidation
+  revalidateTag(`${user.id}:todos`)
+  revalidateTag(`${user.id}:archived-todos`)
+  
   return { success: true }
 }

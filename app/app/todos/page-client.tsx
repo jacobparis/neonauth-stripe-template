@@ -21,6 +21,7 @@ import {
   MoreVertical,
   Loader2,
   MessageSquare,
+  Archive,
 } from 'lucide-react'
 import type { Todo, User } from '@/drizzle/schema'
 import {
@@ -96,6 +97,7 @@ function AddTodoForm({
         userId: '', // Will be set by server
         createdAt: new Date(),
         updatedAt: new Date(),
+        deletedAt: null,
       }
 
       setPendingEdits((prev) => [
@@ -243,7 +245,7 @@ const TodoItem = memo(function TodoItem({
             onCheckedChange={(checked: boolean) =>
               onToggleSelect(todo.id, checked)
             }
-            className={`data-[state=checked]:bg-muted0 data-[state=checked]:text-white data-[state=checked]:border-muted0 ${
+            className={`data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary ${
               isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
             } transition-opacity`}
             aria-label="Select todo for bulk actions"
@@ -507,7 +509,7 @@ export function TodosPageClient({
                     selectedTodos.length > 0 && displayedTodos.length > 0
                   }
                   onCheckedChange={toggleSelectAll}
-                  className="data-[state=checked]:bg-muted data-[state=checked]:text-white data-[state=checked]:border-muted"
+                  className="data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary"
                 />
                 <label htmlFor="select-all" className="text-sm font-medium">
                   {selectedTodoIds.size} selected
@@ -613,15 +615,27 @@ export function TodosPageClient({
                   onCheckedChange={(checked: boolean) => {
                     toggleSelectAll(checked)
                   }}
-                  className="data-[state=checked]:bg-muted data-[state=checked]:text-white data-[state=checked]:border-muted"
+                  className="data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary"
                 />
                 <label htmlFor="select-all" className="text-sm font-medium">
                   Select All
                 </label>
               </div>
-              <div className="text-sm text-muted-foreground">
-                {displayedTodos.length} item
-                {displayedTodos.length !== 1 ? 's' : ''}
+              <div className="flex items-center gap-4">
+                <Link href="/app/todos/archived">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground"
+                  >
+                    <Archive className="h-4 w-4 mr-2" />
+                    Archived
+                  </Button>
+                </Link>
+                <div className="text-sm text-muted-foreground">
+                  {displayedTodos.length} item
+                  {displayedTodos.length !== 1 ? 's' : ''}
+                </div>
               </div>
             </>
           )}

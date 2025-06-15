@@ -1,9 +1,9 @@
-import { streamText, appendClientMessage } from 'ai'
+import { streamText, appendClientMessage, appendResponseMessages, createDataStream } from 'ai'
 import { NextRequest } from 'next/server'
 import { stackServerApp } from '@/stack'
 import { myProvider } from '@/lib/ai/providers'
 import { systemPrompt } from '@/lib/ai/prompts'
-import { getTodo, getComments } from '@/lib/actions'
+import { getTodo, getComments, addComment } from '@/lib/actions'
 import { format } from 'date-fns'
 import { 
   updateTodoTitle, 
@@ -12,6 +12,7 @@ import {
   toggleTodoCompletion
 } from '@/lib/ai/tools/todo-actions'
 import { checkMessageRateLimit } from '@/lib/rate-limit'
+import { generateUUID } from '@/lib/utils'
 
 export const maxDuration = 60
 
@@ -49,14 +50,34 @@ export async function POST(req: NextRequest) {
     const previousMessages = previousComments.map(comment => ({
       id: comment.id,
       role: (comment.userId === 'ai-assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
-      content: comment.content,
+      parts: [{ type: 'text' as const, text: comment.content }],
       createdAt: comment.createdAt,
+      // Note: content is deprecated but still needed for compatibility
+      content: comment.content,
     }))
 
     const messages = appendClientMessage({
       messages: previousMessages,
       message,
     })
+
+    // Extract text content from message parts for saving
+    const messageText = message.parts
+      ?.filter((part: any) => part.type === 'text')
+      .map((part: any) => part.text)
+      .join('\n') || message.content || ''
+
+    // Save user message immediately
+    const userFormData = new FormData()
+    userFormData.append('content', messageText)
+    userFormData.append('todoId', id)
+    userFormData.append('isAiGenerated', 'false')
+    
+    try {
+      await addComment(userFormData)
+    } catch (error) {
+      console.error('Failed to save user message:', error)
+    }
 
     // Format due date
     const dueDateStr = todo.dueDate 
@@ -122,20 +143,58 @@ RESPONSE FORMAT:
 The user's current message is what you should respond to and act upon.
 `
 
-    const result = streamText({
-      model: myProvider.languageModel(selectedChatModel || 'chat-model'),
-      system: todoSystemPrompt,
-      messages,
-      maxSteps: 5,
-      tools: {
-        updateTodoTitle,
-        updateTodoDescription,
-        updateTodoDueDate,
-        toggleTodoCompletion,
+    const stream = createDataStream({
+      execute: (dataStream) => {
+        const result = streamText({
+          model: myProvider.languageModel(selectedChatModel || 'chat-model'),
+          system: todoSystemPrompt,
+          messages,
+          maxSteps: 5,
+          experimental_generateMessageId: generateUUID,
+          tools: {
+            updateTodoTitle,
+            updateTodoDescription,
+            updateTodoDueDate,
+            toggleTodoCompletion,
+          },
+          onFinish: async ({ response }) => {
+            try {
+              const [, assistantMessage] = appendResponseMessages({
+                messages: [message],
+                responseMessages: response.messages,
+              })
+
+              if (assistantMessage) {
+                // Extract text content from assistant message parts
+                const assistantText = assistantMessage.parts
+                  ?.filter((part: any) => part.type === 'text')
+                  .map((part: any) => part.text)
+                  .join('\n') || assistantMessage.content || ''
+
+                if (assistantText.trim()) {
+                  // Save AI response
+                  const aiFormData = new FormData()
+                  aiFormData.append('content', assistantText)
+                  aiFormData.append('todoId', id)
+                  aiFormData.append('isAiGenerated', 'true')
+                  
+                  await addComment(aiFormData)
+                }
+              }
+            } catch (error) {
+              console.error('Failed to save AI response:', error)
+            }
+          },
+        })
+
+        result.mergeIntoDataStream(dataStream)
+      },
+      onError: () => {
+        return 'Oops, an error occurred!'
       },
     })
 
-    return result.toDataStreamResponse()
+    return new Response(stream)
   } catch (error) {
     console.error('Chat API error:', error)
     return new Response('Internal Server Error', { status: 500 })

@@ -1,6 +1,6 @@
 import { tool } from 'ai'
 import { z } from 'zod'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
 import { todos } from '@/drizzle/schema'
@@ -30,6 +30,12 @@ export const updateTodoTitle = tool({
       })
 
       revalidatePath(`/app/todos/${todoId}`)
+      
+      // Add cache tag revalidation - get userId from the updated todo
+      if (updatedTodo.userId) {
+        revalidateTag(`${updatedTodo.userId}:todos`)
+        revalidateTag(`${updatedTodo.userId}:archived-todos`)
+      }
       
       return {
         success: true,
@@ -70,6 +76,12 @@ export const updateTodoDescription = tool({
       })
 
       revalidatePath(`/app/todos/${todoId}`)
+      
+      // Add cache tag revalidation - get userId from the updated todo
+      if (updatedTodo.userId) {
+        revalidateTag(`${updatedTodo.userId}:todos`)
+        revalidateTag(`${updatedTodo.userId}:archived-todos`)
+      }
       
       return {
         success: true,
@@ -116,6 +128,12 @@ export const updateTodoDueDate = tool({
       })
 
       revalidatePath(`/app/todos/${todoId}`)
+      
+      // Add cache tag revalidation - get userId from the updated todo
+      if (updatedTodo.userId) {
+        revalidateTag(`${updatedTodo.userId}:todos`)
+        revalidateTag(`${updatedTodo.userId}:archived-todos`)
+      }
       
       return {
         success: true,
@@ -170,6 +188,12 @@ export const toggleTodoCompletion = tool({
       })
 
       revalidatePath(`/app/todos/${todoId}`)
+      
+      // Add cache tag revalidation - get userId from the updated todo
+      if (updatedTodo.userId) {
+        revalidateTag(`${updatedTodo.userId}:todos`)
+        revalidateTag(`${updatedTodo.userId}:archived-todos`)
+      }
       
       return {
         success: true,

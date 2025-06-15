@@ -3,7 +3,7 @@
 import { db } from "@/lib/db"
 import { todos } from "@/drizzle/schema"
 import { inArray } from "drizzle-orm"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { stackServerApp } from "@/stack"
 import { createNotification } from '@/app/api/notifications/notifications'
 
@@ -21,9 +21,13 @@ export async function processDeleteTodos(ids: string[], userId?: string) {
       where: inArray(todos.id, validIds)
     })
 
-    // Delete the todos
+    // Soft delete the todos by setting deletedAt
     await db
-      .delete(todos)
+      .update(todos)
+      .set({ 
+        deletedAt: new Date(),
+        updatedAt: new Date() 
+      })
       .where(inArray(todos.id, validIds))
 
     // Create notifications for the deleted todos
@@ -32,7 +36,7 @@ export async function processDeleteTodos(ids: string[], userId?: string) {
         createNotification({
           userId,
           type: "warning",
-          message: `Todo deleted: ${todo.title}`,
+          message: `Todo archived: ${todo.title}`,
           taskId: todo.id,
         })
       )
@@ -49,9 +53,13 @@ export async function processDeleteTodos(ids: string[], userId?: string) {
       where: inArray(todos.id, validIds)
     })
 
-    // Delete the todos
+    // Soft delete the todos by setting deletedAt
     await db
-      .delete(todos)
+      .update(todos)
+      .set({ 
+        deletedAt: new Date(),
+        updatedAt: new Date() 
+      })
       .where(inArray(todos.id, validIds))
 
     // Create notifications for the deleted todos
@@ -60,7 +68,7 @@ export async function processDeleteTodos(ids: string[], userId?: string) {
         createNotification({
           userId: user.id,
           type: "warning",
-          message: `Todo deleted: ${todo.title}`,
+          message: `Todo archived: ${todo.title}`,
           taskId: todo.id,
         })
       )
@@ -68,6 +76,16 @@ export async function processDeleteTodos(ids: string[], userId?: string) {
   }
 
   revalidatePath("/app/todos")
+  revalidatePath("/app/todos/archived")
+  
+  // Get the user ID for cache tag revalidation
+  const userIdForCache = userId || (await stackServerApp.getUser())?.id
+  if (userIdForCache) {
+    // Match the exact cacheTag pattern from page servers: cacheTag(userId, 'todos')
+    revalidateTag(`${userIdForCache}:todos`)
+    revalidateTag(`${userIdForCache}:archived-todos`)
+  }
+  
   return { success: true }
 }
 

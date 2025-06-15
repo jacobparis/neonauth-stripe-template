@@ -49,10 +49,7 @@ export function Chat({
     }),
     onError: (error) => {
       if (error instanceof ChatSDKError) {
-        toast({
-          type: 'error',
-          description: error.message,
-        })
+        toast.error(error.message)
       }
     },
   })
@@ -85,7 +82,7 @@ export function Chat({
   })
 
   return (
-    <div className="flex flex-col min-w-0 h-dvh bg-background">
+    <div className="min-w-0 bg-background">
       <Messages
         chatId={id}
         status={status}

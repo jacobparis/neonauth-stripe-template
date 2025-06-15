@@ -7,7 +7,7 @@ import { unstable_cacheTag as cacheTag } from 'next/cache'
 
 export async function TodosPageServer({ userId }: { userId: string }) {
   'use cache'
-  cacheTag(userId, 'todos')
+  cacheTag(`${userId}:todos`)
 
   const [todos, rateLimitStatus] = await Promise.all([
     getTodos(userId),

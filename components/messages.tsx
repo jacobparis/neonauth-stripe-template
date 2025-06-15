@@ -3,7 +3,6 @@ import { PreviewMessage, ThinkingMessage } from './message'
 import { memo } from 'react'
 import equal from 'fast-deep-equal'
 import type { UseChatHelpers } from '@ai-sdk/react'
-import { useMessages } from '@/hooks/use-messages'
 
 interface MessagesProps {
   chatId: string
@@ -22,16 +21,8 @@ function PureMessages({
   reload,
   isReadonly,
 }: MessagesProps) {
-  const { containerRef: messagesContainerRef, hasSentMessage } = useMessages({
-    chatId,
-    status,
-  })
-
   return (
-    <div
-      ref={messagesContainerRef}
-      className="flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll pt-4 relative"
-    >
+    <div className="flex flex-col min-w-0 gap-6 pt-4">
       {messages.map((message, index) => (
         <PreviewMessage
           key={message.id}
@@ -41,9 +32,7 @@ function PureMessages({
           setMessages={setMessages}
           reload={reload}
           isReadonly={isReadonly}
-          requiresScrollPadding={
-            hasSentMessage && index === messages.length - 1
-          }
+          requiresScrollPadding={false}
         />
       ))}
 

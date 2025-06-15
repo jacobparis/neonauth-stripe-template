@@ -3,7 +3,7 @@
 import { db } from "@/lib/db"
 import { todos, comments } from "@/drizzle/schema"
 import { eq, inArray, and } from "drizzle-orm"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { stackServerApp } from "@/stack"
 import { createNotification } from '@/app/api/notifications/notifications'
 import { nanoid } from 'nanoid'
@@ -116,6 +116,15 @@ export async function processUpdateDueDate(
   }
 
   revalidatePath("/app/todos")
+  
+  // Get the user ID for cache tag revalidation
+  const userIdForCache = args.userId || (await stackServerApp.getUser())?.id
+  if (userIdForCache) {
+    // Match the exact cacheTag pattern from page servers
+    revalidateTag(`${userIdForCache}:todos`)
+    revalidateTag(`${userIdForCache}:archived-todos`)
+  }
+  
   return { success: true }
 }
 

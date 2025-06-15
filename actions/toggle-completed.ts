@@ -3,7 +3,7 @@
 import { db } from "@/lib/db"
 import { todos, comments } from "@/drizzle/schema"
 import { eq, inArray, and } from "drizzle-orm"
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 import { stackServerApp } from "@/stack"
 import { createNotification } from '@/app/api/notifications/notifications'
 import { nanoid } from 'nanoid'
@@ -16,7 +16,21 @@ export async function toggleTodoCompleted(formData: FormData) {
     throw new Error("Not authenticated")
   }
 
-  const ids = formData.getAll("id").map(id => id as string)
+  // Handle both individual and bulk operations
+  let ids: string[]
+  const idsFromJson = formData.get("ids")
+  const idsFromIndividual = formData.getAll("id")
+  
+  if (idsFromJson) {
+    // Bulk operation - ids sent as JSON string
+    ids = JSON.parse(idsFromJson as string)
+  } else if (idsFromIndividual.length > 0) {
+    // Individual operation - ids sent as multiple form fields
+    ids = idsFromIndividual.map(id => id as string)
+  } else {
+    throw new Error("No todo IDs provided")
+  }
+
   const completed = formData.get("completed") === "true"
 
   try {
@@ -75,5 +89,13 @@ export async function processToggleCompleted(ids: string[], payload: { completed
   }
 
   revalidatePath("/app/todos")
+  
+  // Get the user ID for cache tag revalidation
+  if (payload.userId) {
+    // Match the exact cacheTag pattern from page servers
+    revalidateTag(`${payload.userId}:todos`)
+    revalidateTag(`${payload.userId}:archived-todos`)
+  }
+  
   return { success: true }
 }

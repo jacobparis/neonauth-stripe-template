@@ -16,7 +16,18 @@ type CommentWithUser = Comment & {
     image: string | null
   } | null
 }
-
+function convertToUIMessages(comments: CommentWithUser[]) {
+  return comments.map((comment) => ({
+    id: comment.id ?? nanoid(),
+    role: comment.userId === 'ai-assistant' ? 'assistant' : 'user',
+    parts: [{ type: 'text' as const, text: comment.content }],
+    // The following properties are required by the Chat component but are
+    // otherwise unused in this context. They are filled with safe defaults.
+    content: '',
+    createdAt: comment.createdAt ?? new Date(),
+    experimental_attachments: [],
+  }))
+}
 export function ActivityChat({
   todoId,
   initialComments,
@@ -36,18 +47,6 @@ export function ActivityChat({
   rateLimitStatus?: any
 }) {
   // Convert todo comments to the UIMessage shape expected by <Chat />
-  function convertToUIMessages(comments: CommentWithUser[]) {
-    return comments.map((comment) => ({
-      id: comment.id ?? nanoid(),
-      role: comment.userId === 'ai-assistant' ? 'assistant' : 'user',
-      parts: [{ text: comment.content }],
-      // The following properties are required by the Chat component but are
-      // otherwise unused in this context. They are filled with safe defaults.
-      content: '',
-      createdAt: comment.createdAt ?? new Date(),
-      experimental_attachments: [],
-    }))
-  }
 
   return (
     <>
@@ -55,12 +54,6 @@ export function ActivityChat({
         id={todoId}
         initialMessages={convertToUIMessages(initialComments) as any}
         isReadonly={false}
-        // The Chat component requires a `session` prop, but we don't have a
-        // Next-Auth session in this context. Passing `undefined` keeps the type
-        // checker happy without creating new interfaces.
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        session={undefined}
         autoResume={true}
       />
     </>

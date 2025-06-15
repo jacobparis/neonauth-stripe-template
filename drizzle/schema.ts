@@ -21,6 +21,7 @@ export const todos = pgTable("todos", {
   userId: varchar("user_id", { length: 255 }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at"),
 })
 
 export const comments = pgTable("comments", {
