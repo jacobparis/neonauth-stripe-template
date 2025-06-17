@@ -2,7 +2,7 @@
 
 import { revalidatePath, revalidateTag } from "next/cache"
 import { db } from "@/lib/db"
-import { todos, users_sync, comments } from "@/drizzle/schema"
+import { todos, users_sync, comments, activities } from "@/drizzle/schema"
 import { eq, desc, count, isNull, and } from "drizzle-orm"
 import { stackServerApp, getAccessToken } from "@/stack"
 import { cookies } from "next/headers"
@@ -318,9 +318,9 @@ export async function updateTodo(formData: FormData) {
         .where(eq(todos.id, todoId))
         .returning()
 
-      // Add activity comment for the changes
+      // Log changes as activity instead of comment
       const changeComment = changes.join(', ')
-      await db.insert(comments).values({
+      await db.insert(activities).values({
         id: nanoid(8),
         content: changeComment,
         todoId,
@@ -402,26 +402,67 @@ export async function toggleWatchTodo(formData: FormData) {
   }
 }
 
-export async function getComments({todoId, userId}: {todoId: string, userId: string}) {
+// Overloaded getComments to optionally include activities
+export async function getComments(arg1: any): Promise<any[]> {
   try {
-    // First check if user owns the todo
-    const todo = await db.query.todos.findFirst({
-      where: and(eq(todos.id, todoId), eq(todos.userId, userId))
-    })
+    // Determine input signature
+    let todoId: string
+    let userId: string | undefined
+    let includeActivity = false
 
-    if (!todo) {
-      throw new Error("Todo not found")
+    if (typeof arg1 === 'string') {
+      todoId = arg1
+      // If userId is not supplied, attempt to fetch from auth context
+      const user = await stackServerApp.getUser()
+      userId = user?.id
+    } else {
+      todoId = arg1.todoId
+      userId = arg1.userId
+      includeActivity = arg1.includeActivity ?? false
     }
 
-    const commentList = await db.query.comments.findMany({
+    if (!todoId) {
+      throw new Error("Todo ID is required")
+    }
+
+    // Ownership check when userId available
+    if (userId) {
+      const todo = await db.query.todos.findFirst({
+        where: and(eq(todos.id, todoId), eq(todos.userId, userId))
+      })
+      if (!todo) {
+        throw new Error("Todo not found")
+      }
+    }
+
+    // Fetch comments
+    const commentsList = await db.query.comments.findMany({
       where: eq(comments.todoId, todoId),
       with: {
         user: true
       },
-      orderBy: comments.createdAt
+      orderBy: comments.createdAt,
     })
-    
-    return commentList
+
+    if (!includeActivity) {
+      return commentsList
+    }
+
+    // Fetch activities and coerce to Comment shape
+    const activitiesList = await db.query.activities.findMany({
+      where: eq(activities.todoId, todoId),
+      with: {
+        user: true,
+      },
+      orderBy: activities.createdAt,
+    }) as any[]
+
+    return [
+      ...commentsList,
+      ...activitiesList,
+    ].sort((a: any, b: any) =>
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+    ) as any[]
   } catch (error) {
     console.error("Failed to fetch comments:", error)
     return []

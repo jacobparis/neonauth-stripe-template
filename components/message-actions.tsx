@@ -10,51 +10,64 @@ import {
 } from './ui/tooltip'
 import { memo } from 'react'
 import { toast } from 'sonner'
-import { CopyIcon } from 'lucide-react'
+import { CopyIcon, PencilIcon } from 'lucide-react'
 
 export function PureMessageActions({
   chatId,
   message,
   isLoading,
+  onEdit,
 }: {
   chatId: string
   message: Message
   isLoading: boolean
+  onEdit?: () => void
 }) {
   const [_, copyToClipboard] = useCopyToClipboard()
 
   if (isLoading) return null
-  if (message.role === 'user') return null
+
+  const textFromParts = message.parts
+    ?.filter((part) => part.type === 'text')
+    .map((part) => part.text)
+    .join('\n')
+    .trim()
 
   return (
     <TooltipProvider delayDuration={0}>
       <div className="flex flex-row gap-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              className="py-1 px-2 h-fit text-muted-foreground"
-              variant="outline"
-              onClick={async () => {
-                const textFromParts = message.parts
-                  ?.filter((part) => part.type === 'text')
-                  .map((part) => part.text)
-                  .join('\n')
-                  .trim()
+        {message.role === 'user' && onEdit && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                className="py-1 px-2 h-fit text-muted-foreground"
+                variant="outline"
+                onClick={onEdit}
+              >
+                <PencilIcon />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Edit message</TooltipContent>
+          </Tooltip>
+        )}
 
-                if (!textFromParts) {
-                  toast.error("There's no text to copy!")
-                  return
-                }
-
-                await copyToClipboard(textFromParts)
-                toast.success('Copied to clipboard!')
-              }}
-            >
-              <CopyIcon />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Copy</TooltipContent>
-        </Tooltip>
+        {textFromParts && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                className="py-1 px-2 h-fit text-muted-foreground"
+                variant="outline"
+                onClick={async () => {
+                  await copyToClipboard(textFromParts)
+                  toast.success('Copied to clipboard!')
+                }}
+              >
+                <CopyIcon />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Copy</TooltipContent>
+          </Tooltip>
+        )}
       </div>
     </TooltipProvider>
   )

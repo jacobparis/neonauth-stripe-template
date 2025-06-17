@@ -15,6 +15,13 @@
       "when": 1749937220316,
       "tag": "0001_milky_wolfsbane",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1750016800632,
+      "tag": "0002_friendly_vampiro",
+      "breakpoints": true
     }
   ]
 }

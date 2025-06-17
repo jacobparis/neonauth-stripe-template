@@ -1,11 +1,11 @@
-import type { ReactNode } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import type { ReactNode } from 'react'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
   // This is a server component, so we need to use the pathname from the request
-  const pathname = typeof window !== "undefined" ? window.location.pathname : ""
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
 
   return (
     <div className="container mx-auto py-8 px-4 flex flex-col md:flex-row gap-8">
@@ -16,8 +16,8 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
             asChild
             variant="ghost"
             className={cn(
-              "w-full justify-start font-normal",
-              pathname.includes("/app/settings/profile") && "bg-secondary/50",
+              'w-full justify-start font-normal',
+              pathname.includes('/app/settings/profile') && 'bg-secondary/50',
             )}
           >
             <Link href="/app/settings/profile">Profile</Link>
@@ -26,11 +26,21 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
             asChild
             variant="ghost"
             className={cn(
-              "w-full justify-start font-normal",
-              pathname.includes("/app/settings/account") && "bg-secondary/50",
+              'w-full justify-start font-normal',
+              pathname.includes('/app/settings/account') && 'bg-secondary/50',
             )}
           >
             <Link href="/app/settings/account">Account</Link>
+          </Button>
+          <Button
+            asChild
+            variant="ghost"
+            className={cn(
+              'w-full justify-start font-normal',
+              pathname.includes('/app/settings/activity') && 'bg-secondary/50',
+            )}
+          >
+            <Link href="/app/settings/activity">Activity</Link>
           </Button>
         </nav>
       </aside>

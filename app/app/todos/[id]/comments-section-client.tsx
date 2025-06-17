@@ -7,6 +7,7 @@ import { addComment } from '@/lib/actions'
 import { CommentForm } from './comment-form'
 import type { Comment } from '@/drizzle/schema'
 import { nanoid } from 'nanoid'
+import { useEffect } from 'react'
 
 type CommentWithUser = Comment & {
   user: {
@@ -36,6 +37,34 @@ export function CommentsSectionClient({
     initialComments,
     (state, newComment: CommentWithUser) => [...state, newComment],
   )
+
+  // Listen for activity events to optimistically add them to chat
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const custom = e as CustomEvent<{ todoId: string; content: string }>
+      if (custom.detail.todoId !== todoId) return
+
+      const newComment: CommentWithUser = {
+        id: nanoid(8),
+        content: custom.detail.content,
+        todoId: todoId,
+        userId: user.id,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        user: {
+          id: user.id,
+          email: user.primaryEmail,
+          name: user.displayName,
+          image: user.profileImageUrl,
+        },
+      }
+
+      addOptimisticComment(newComment)
+    }
+
+    window.addEventListener('todo-activity', handler)
+    return () => window.removeEventListener('todo-activity', handler)
+  }, [todoId, user, addOptimisticComment])
 
   const handleAddComment = async (formData: FormData) => {
     const content = formData.get('content') as string

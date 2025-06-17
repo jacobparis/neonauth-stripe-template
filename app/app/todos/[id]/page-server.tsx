@@ -25,7 +25,7 @@ export async function TodoItemPageServer({
   const [todo, rateLimitStatus, comments, user] = await Promise.all([
     getTodo({ userId, todoId }),
     getRateLimitStatus(userId),
-    getComments({ todoId, userId }),
+    getComments({ todoId, userId, includeActivity: true }),
     getUserById(userId),
   ])
 

@@ -26,6 +26,15 @@ function convertToUIMessages(comments: CommentWithUser[]) {
     content: '',
     createdAt: comment.createdAt ?? new Date(),
     experimental_attachments: [],
+    metadata: {
+      isActivity:
+        !!(comment as any).userId &&
+        (comment as any).userId !== 'ai-assistant' &&
+        (comment.content.includes('Marked as') ||
+          comment.content.includes('Due date') ||
+          comment.content.includes('Title changed') ||
+          comment.content.includes('Description')),
+    },
   }))
 }
 export function ActivityChat({

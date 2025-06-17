@@ -22,7 +22,7 @@ function PureMessages({
   isReadonly,
 }: MessagesProps) {
   return (
-    <div className="flex flex-col min-w-0 gap-6 pt-4">
+    <div className="flex flex-col min-w-0 pt-4">
       {messages.map((message, index) => (
         <PreviewMessage
           key={message.id}

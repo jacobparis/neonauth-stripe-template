@@ -3,7 +3,6 @@
 import type { UIMessage } from 'ai'
 import { memo, useState } from 'react'
 import { Markdown } from './markdown'
-import { MessageActions } from './message-actions'
 import equal from 'fast-deep-equal'
 import { cn, sanitizeText } from '@/lib/utils'
 import { Button } from './ui/button'
@@ -11,9 +10,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 import { MessageEditor } from './message-editor'
 import { MessageReasoning } from './message-reasoning'
 import type { UseChatHelpers } from '@ai-sdk/react'
-import { PencilIcon, SparklesIcon, User } from 'lucide-react'
+import { PencilIcon, SparklesIcon, User, CopyIcon } from 'lucide-react'
 import { PreviewAttachment } from './preview-attachment'
 import { formatDistanceToNow } from 'date-fns'
+import { useCopyToClipboard } from 'usehooks-ts'
+import { toast } from 'sonner'
 
 const PurePreviewMessage = ({
   chatId,
@@ -33,12 +34,41 @@ const PurePreviewMessage = ({
   requiresScrollPadding: boolean
 }) => {
   const [mode, setMode] = useState<'view' | 'edit'>('view')
+  const [_, copyToClipboard] = useCopyToClipboard()
+
+  // Check for activity message metadata
+  const isActivityMessage = (message as any).metadata?.isActivity === true
+
+  if (isActivityMessage) {
+    return (
+      <div className="flex items-start gap-3 px-4 py-2 rounded-lg hover:bg-muted transition-colors">
+        <div className="flex-shrink-0">
+          <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+            <User className="w-4 h-4 text-white" />
+          </div>
+        </div>
+        <div className="flex-1 min-w-0 mt-1">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">
+              <span className="font-medium text-foreground">You</span>{' '}
+              {message.content || (message.parts?.[0] as any)?.text}
+            </span>
+            <span className="text-xs text-muted-foreground ml-2">
+              {formatDistanceToNow(new Date(message.createdAt || new Date()), {
+                addSuffix: true,
+              })}
+            </span>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="group/message">
-      <div className="flex items-start gap-3 p-4 rounded-lg hover:bg-muted/50 transition-colors">
+      <div className="flex items-start gap-3 px-4 py-2 rounded-lg hover:bg-muted transition-colors">
         {/* Avatar */}
-        <div className="flex-shrink-0 mt-0.5">
+        <div className="flex-shrink-0">
           {message.role === 'assistant' ? (
             <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
               <SparklesIcon className="w-4 h-4 text-white" />
@@ -51,31 +81,67 @@ const PurePreviewMessage = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 mt-1">
           {/* Header */}
           <div className="flex items-center gap-2 mb-2">
             <span className="font-medium text-foreground">
               {message.role === 'assistant' ? 'AI Assistant' : 'You'}
             </span>
-            <span className="text-xs text-muted-foreground">
-              {formatDistanceToNow(new Date(message.createdAt || new Date()), {
-                addSuffix: true,
-              })}
-            </span>
-            {message.role === 'user' && !isReadonly && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="opacity-0 group-hover/message:opacity-100 h-6 w-6 p-0 ml-auto"
-                    onClick={() => setMode('edit')}
-                  >
-                    <PencilIcon className="w-3 h-3" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Edit message</TooltipContent>
-              </Tooltip>
+            {!isReadonly && (
+              <div className="flex items-center gap-2 ml-auto opacity-0 group-hover/message:opacity-100">
+                <span className="text-xs text-muted-foreground">
+                  {formatDistanceToNow(
+                    new Date(message.createdAt || new Date()),
+                    {
+                      addSuffix: true,
+                    },
+                  )}
+                </span>
+                {message.role === 'user' && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={() => setMode('edit')}
+                      >
+                        <PencilIcon className="w-3 h-3" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Edit message</TooltipContent>
+                  </Tooltip>
+                )}
+                {message.role === 'assistant' && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={async () => {
+                          const textFromParts = message.parts
+                            ?.filter((part) => part.type === 'text')
+                            .map((part) => part.text)
+                            .join('\n')
+                            .trim()
+
+                          if (!textFromParts) {
+                            toast.error("There's no text to copy!")
+                            return
+                          }
+
+                          await copyToClipboard(textFromParts)
+                          toast.success('Copied to clipboard!')
+                        }}
+                      >
+                        <CopyIcon className="w-3 h-3" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Copy</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
             )}
           </div>
 
@@ -172,17 +238,6 @@ const PurePreviewMessage = ({
 
             return null
           })}
-
-          {/* Actions */}
-          {!isReadonly && message.role === 'assistant' && (
-            <div className="mt-3 opacity-0 group-hover/message:opacity-100 transition-opacity">
-              <MessageActions
-                chatId={chatId}
-                message={message}
-                isLoading={isLoading}
-              />
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -1,8 +1,8 @@
 "use server"
 
 import { db } from "@/lib/db"
-import { todos, comments } from "@/drizzle/schema"
-import { eq, inArray, and } from "drizzle-orm"
+import { todos, activities } from "@/drizzle/schema"
+import { eq, inArray } from "drizzle-orm"
 import { revalidatePath, revalidateTag } from "next/cache"
 import { stackServerApp } from "@/stack"
 import { createNotification } from '@/app/api/notifications/notifications'
@@ -65,7 +65,7 @@ export async function processToggleCompleted(ids: string[], payload: { completed
     if (currentTodo.completed !== payload.completed) {
       const completionComment = payload.completed ? "Marked as completed" : "Marked as incomplete"
 
-      await db.insert(comments).values({
+      await db.insert(activities).values({
         id: nanoid(8),
         content: completionComment,
         todoId: currentTodo.id,

@@ -33,6 +33,15 @@ export const comments = pgTable("comments", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 })
 
+export const activities = pgTable("activities", {
+  id: varchar("id", { length: 255 }).primaryKey(),
+  content: text("content").notNull(),
+  todoId: varchar("todo_id", { length: 255 }).notNull(),
+  userId: varchar("user_id", { length: 255 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+})
+
 // Define relations
 export const usersRelations = relations(users_sync, ({ many }) => ({
   comments: many(comments, { relationName: "userComments" }),
@@ -58,6 +67,19 @@ export const commentsRelations = relations(comments, ({ one }) => ({
     fields: [comments.userId],
     references: [users_sync.id],
     relationName: "userComments",
+  }),
+}))
+
+export const activitiesRelations = relations(activities, ({ one }) => ({
+  todo: one(todos, {
+    fields: [activities.todoId],
+    references: [todos.id],
+    relationName: "todoActivities",
+  }),
+  user: one(users_sync, {
+    fields: [activities.userId],
+    references: [users_sync.id],
+    relationName: "userActivities",
   }),
 }))
 

@@ -73,6 +73,29 @@ export function Chat({
 
   const [attachments, setAttachments] = useState<Array<Attachment>>([])
 
+  // Listen for todo-activity events matching this chat and append as new message
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const custom = e as CustomEvent<{ todoId: string; content: string }>
+      if (custom.detail.todoId !== id) return
+
+      const newMessage = {
+        id: nanoid(),
+        role: 'assistant' as const,
+        content: custom.detail.content,
+        parts: [{ type: 'text' as const, text: custom.detail.content }],
+        createdAt: new Date(),
+        experimental_attachments: [],
+        metadata: { isActivity: true },
+      }
+
+      setMessages((prev) => [...prev, newMessage])
+    }
+
+    window.addEventListener('todo-activity', handler)
+    return () => window.removeEventListener('todo-activity', handler)
+  }, [id, setMessages])
+
   useAutoResume({
     autoResume,
     initialMessages,

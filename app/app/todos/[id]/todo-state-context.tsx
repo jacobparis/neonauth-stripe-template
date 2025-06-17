@@ -8,6 +8,7 @@ import React, {
 } from 'react'
 import { updateDueDate } from '@/actions/update-due-date'
 import { toggleTodoCompleted } from '@/actions/toggle-completed'
+import { format } from 'date-fns'
 import type { Todo } from '@/drizzle/schema'
 
 export interface TodoStateHandlers {
@@ -56,6 +57,16 @@ export function TodoStateProvider({
       await updateDueDate(formData)
     })
     setDate(newDate)
+
+    // Dispatch optimistic activity event
+    const message = newDate
+      ? `Due date set to ${format(newDate, 'MM/dd/yyyy')}`
+      : 'Due date removed'
+    window.dispatchEvent(
+      new CustomEvent('todo-activity', {
+        detail: { todoId: todo.id, content: message },
+      }),
+    )
   }
 
   const handleToggleCompleted = () => {
@@ -66,6 +77,13 @@ export function TodoStateProvider({
       await toggleTodoCompleted(formData)
     })
     setCompleted(!completed)
+
+    const message = !completed ? 'Marked as completed' : 'Marked as incomplete'
+    window.dispatchEvent(
+      new CustomEvent('todo-activity', {
+        detail: { todoId: todo.id, content: message },
+      }),
+    )
   }
 
   const stateHandlers: TodoStateHandlers = {

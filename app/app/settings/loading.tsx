@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton"
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function SettingsLoading() {
   return (
@@ -6,6 +6,7 @@ export default function SettingsLoading() {
       <aside className="w-full md:w-64 shrink-0">
         <Skeleton className="h-7 w-32 mb-4" />
         <nav className="space-y-1">
+          <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
         </nav>
