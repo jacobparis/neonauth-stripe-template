@@ -15,8 +15,19 @@ type CommentWithUser = Comment & {
     name: string | null
     image: string | null
   } | null
+  isActivity?: boolean
 }
 function convertToUIMessages(comments: CommentWithUser[]) {
+  console.log(
+    'convertToUIMessages received:',
+    comments.map((c) => ({
+      id: c.id,
+      content: c.content,
+      isActivity: c.isActivity,
+      userId: c.userId,
+    })),
+  )
+
   return comments.map((comment) => ({
     id: comment.id ?? nanoid(),
     role: comment.userId === 'ai-assistant' ? 'assistant' : 'user',
@@ -27,13 +38,7 @@ function convertToUIMessages(comments: CommentWithUser[]) {
     createdAt: comment.createdAt ?? new Date(),
     experimental_attachments: [],
     metadata: {
-      isActivity:
-        !!(comment as any).userId &&
-        (comment as any).userId !== 'ai-assistant' &&
-        (comment.content.includes('Marked as') ||
-          comment.content.includes('Due date') ||
-          comment.content.includes('Title changed') ||
-          comment.content.includes('Description')),
+      isActivity: !!comment.isActivity,
     },
   }))
 }

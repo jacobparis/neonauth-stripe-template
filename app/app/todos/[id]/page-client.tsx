@@ -32,8 +32,10 @@ export function TodoItemPageClient({ todo }: { todo: Todo }) {
     description,
     setDescription,
     completed,
+    deleted,
     handleUpdateDueDate: contextHandleUpdateDueDate,
     handleToggleCompleted,
+    handleToggleDeleted,
   } = useTodoState()
 
   const autoResize = () => {
@@ -54,10 +56,7 @@ export function TodoItemPageClient({ todo }: { todo: Todo }) {
   }
 
   const handleDelete = () => {
-    startTransition(async () => {
-      await deleteTodo(todo.id)
-      router.push('/app/todos')
-    })
+    handleToggleDeleted()
   }
 
   return (
@@ -151,9 +150,13 @@ export function TodoItemPageClient({ todo }: { todo: Todo }) {
               size="sm"
               onClick={handleDelete}
               disabled={isPending}
-              className="text-muted-foreground hover:text-foreground hover:bg-muted px-4 py-2 rounded-lg font-medium transition-all duration-200"
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                deleted
+                  ? 'text-orange-700 hover:text-orange-800 hover:bg-orange-50 border-orange-200'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
             >
-              Delete
+              {deleted ? 'Restore' : 'Archive'}
             </Button>
           </div>
         </form>

@@ -8,6 +8,7 @@ import React, {
 } from 'react'
 import { updateDueDate } from '@/actions/update-due-date'
 import { toggleTodoCompleted } from '@/actions/toggle-completed'
+import { toggleSoftDelete } from '@/actions/delete-todos'
 import { format } from 'date-fns'
 import type { Todo } from '@/drizzle/schema'
 
@@ -20,8 +21,11 @@ export interface TodoStateHandlers {
   setDescription: (description: string) => void
   completed: boolean
   setCompleted: (completed: boolean) => void
+  deleted: boolean
+  setDeleted: (deleted: boolean) => void
   handleUpdateDueDate: (newDate: Date | undefined) => void
   handleToggleCompleted: () => void
+  handleToggleDeleted: () => void
 }
 
 const TodoStateContext = createContext<TodoStateHandlers | null>(null)
@@ -48,6 +52,7 @@ export function TodoStateProvider({
   const [title, setTitle] = useState(todo.title)
   const [description, setDescription] = useState(todo.description || '')
   const [completed, setCompleted] = useState(todo.completed)
+  const [deleted, setDeleted] = useState(!!todo.deletedAt)
 
   const handleUpdateDueDate = (newDate: Date | undefined) => {
     startTransition(async () => {
@@ -86,6 +91,23 @@ export function TodoStateProvider({
     )
   }
 
+  const handleToggleDeleted = () => {
+    startTransition(async () => {
+      const formData = new FormData()
+      formData.append('id', todo.id.toString())
+      formData.append('deleted', (!deleted).toString())
+      await toggleSoftDelete(formData)
+    })
+    setDeleted(!deleted)
+
+    const message = !deleted ? 'Archived' : 'Restored from archive'
+    window.dispatchEvent(
+      new CustomEvent('todo-activity', {
+        detail: { todoId: todo.id, content: message },
+      }),
+    )
+  }
+
   const stateHandlers: TodoStateHandlers = {
     date,
     setDate,
@@ -95,8 +117,11 @@ export function TodoStateProvider({
     setDescription,
     completed,
     setCompleted,
+    deleted,
+    setDeleted,
     handleUpdateDueDate,
     handleToggleCompleted,
+    handleToggleDeleted,
   }
 
   return (

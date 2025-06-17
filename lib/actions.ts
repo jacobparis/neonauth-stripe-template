@@ -341,7 +341,7 @@ export async function updateTodo(formData: FormData) {
     revalidateTag(`${user.id}:todos`)
     revalidateTag(`${user.id}:archived-todos`)
     
-    return { success: true }
+    return
   } catch (error) {
     console.error('Failed to update todo:', error)
     throw new Error('Failed to update todo')
@@ -457,12 +457,32 @@ export async function getComments(arg1: any): Promise<any[]> {
       orderBy: activities.createdAt,
     }) as any[]
 
-    return [
-      ...commentsList,
-      ...activitiesList,
+    // Add discriminator fields
+    const commentsWithDiscriminator = commentsList.map(comment => ({
+      ...comment,
+      isActivity: false
+    }))
+
+    const activitiesWithDiscriminator = activitiesList.map(activity => ({
+      ...activity,
+      isActivity: true
+    }))
+
+    const result = [
+      ...commentsWithDiscriminator,
+      ...activitiesWithDiscriminator,
     ].sort((a: any, b: any) =>
       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     ) as any[]
+
+    console.log('getComments result:', result.map(r => ({ 
+      id: r.id, 
+      content: r.content, 
+      isActivity: r.isActivity,
+      type: r.isActivity ? 'activity' : 'comment'
+    })))
+
+    return result
   } catch (error) {
     console.error("Failed to fetch comments:", error)
     return []

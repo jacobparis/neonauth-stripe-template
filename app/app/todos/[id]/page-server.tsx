@@ -29,6 +29,16 @@ export async function TodoItemPageServer({
     getUserById(userId),
   ])
 
+  console.log(
+    'page-server comments:',
+    comments.map((c) => ({
+      id: c.id,
+      content: c.content,
+      isActivity: c.isActivity,
+      type: c.isActivity ? 'activity' : 'comment',
+    })),
+  )
+
   if (!user) {
     throw new Error('User not found')
   }

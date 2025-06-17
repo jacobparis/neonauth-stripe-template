@@ -1,11 +1,12 @@
 "use server"
 
 import { db } from "@/lib/db"
-import { todos } from "@/drizzle/schema"
-import { inArray } from "drizzle-orm"
+import { todos, activities } from "@/drizzle/schema"
+import { inArray, eq } from "drizzle-orm"
 import { revalidatePath, revalidateTag } from "next/cache"
 import { stackServerApp } from "@/stack"
 import { createNotification } from '@/app/api/notifications/notifications'
+import { nanoid } from 'nanoid'
 
 // This function will be called by vercel-queue without user context
 // or directly with auth context
@@ -106,5 +107,71 @@ export async function deleteTodo(ids: string | string[]) {
   } catch (error) {
     console.error("Failed to delete todos:", error)
     return { error: "Failed to delete todos" }
+  }
+}
+
+// Toggle soft delete for a single todo
+export async function toggleSoftDelete(formData: FormData) {
+  const user = await stackServerApp.getUser()
+  if (!user) {
+    throw new Error("Not authenticated")
+  }
+
+  const id = formData.get('id') as string
+  const deleted = formData.get('deleted') === 'true'
+
+  if (!id) {
+    throw new Error("Todo ID is required")
+  }
+
+  try {
+    // Get the current todo to verify ownership
+    const todo = await db.query.todos.findFirst({
+      where: eq(todos.id, id)
+    })
+
+    if (!todo) {
+      throw new Error("Todo not found")
+    }
+
+    if (todo.userId !== user.id) {
+      throw new Error("Access denied")
+    }
+
+    // Update the todo
+    await db
+      .update(todos)
+      .set({ 
+        deletedAt: deleted ? new Date() : null,
+        updatedAt: new Date() 
+      })
+      .where(eq(todos.id, id))
+
+    // Create activity log
+    const message = deleted ? 'Todo archived' : 'Todo restored from archive'
+    await db.insert(activities).values({
+      id: nanoid(8),
+      content: message,
+      todoId: id,
+      userId: user.id,
+    })
+
+    // Create notification
+    await createNotification({
+      userId: user.id,
+      type: deleted ? "warning" : "info",
+      message: `${message}: ${todo.title}`,
+      taskId: id,
+    })
+
+    revalidatePath("/app/todos")
+    revalidatePath("/app/todos/archived")
+    revalidateTag(`${user.id}:todos`)
+    revalidateTag(`${user.id}:archived-todos`)
+
+    return { success: true }
+  } catch (error) {
+    console.error("Failed to toggle soft delete:", error)
+    throw error
   }
 }
