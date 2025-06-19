@@ -3,7 +3,7 @@
 import { db } from "@/lib/db"
 import { todos, comments } from "@/drizzle/schema"
 import { eq } from "drizzle-orm"
-import { revalidatePath } from "next/cache"
+import { revalidateTag } from "next/cache"
 import { createNotification } from '@/app/api/notifications/notifications'
 import { generateObject } from 'ai'
 import { getAI } from '@/lib/ai'
@@ -55,7 +55,7 @@ Generate a helpful response with:
       })
     }
 
-    revalidatePath(`/app/todos/${todoId}`)
+    revalidateTag(`${userId}:todos:${todoId}`)
     return { success: true }
   } catch (error) {
     console.error("Failed to generate description:", error)

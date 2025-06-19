@@ -5,6 +5,7 @@ import React, {
   useContext,
   useState,
   useTransition,
+  useEffect,
 } from 'react'
 import { updateDueDate } from '@/actions/update-due-date'
 import { toggleTodoCompleted } from '@/actions/toggle-completed'
@@ -53,6 +54,38 @@ export function TodoStateProvider({
   const [description, setDescription] = useState(todo.description || '')
   const [completed, setCompleted] = useState(todo.completed)
   const [deleted, setDeleted] = useState(!!todo.deletedAt)
+
+  // Listen for AI tool optimistic updates
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const custom = e as CustomEvent<{
+        todoId: string
+        type: 'title' | 'description' | 'dueDate' | 'completed'
+        value: any
+      }>
+      if (custom.detail.todoId !== todo.id) return
+
+      const { type, value } = custom.detail
+
+      switch (type) {
+        case 'title':
+          setTitle(value)
+          break
+        case 'description':
+          setDescription(value || '')
+          break
+        case 'dueDate':
+          setDate(value ? new Date(value) : undefined)
+          break
+        case 'completed':
+          setCompleted(value)
+          break
+      }
+    }
+
+    window.addEventListener('todo-optimistic-update', handler)
+    return () => window.removeEventListener('todo-optimistic-update', handler)
+  }, [todo.id])
 
   const handleUpdateDueDate = (newDate: Date | undefined) => {
     startTransition(async () => {

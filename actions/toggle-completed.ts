@@ -88,9 +88,6 @@ export async function processToggleCompleted(ids: string[], payload: { completed
     )
   }
 
-  revalidatePath("/app/todos")
-  
-  // Get the user ID for cache tag revalidation
   if (payload.userId) {
     // Match the exact cacheTag pattern from page servers
     revalidateTag(`${payload.userId}:todos`)

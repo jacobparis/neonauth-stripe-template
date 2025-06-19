@@ -8,11 +8,9 @@ import { stackServerApp } from "@/stack"
 import { createNotification } from '@/app/api/notifications/notifications'
 import { nanoid } from 'nanoid'
 
-// This function will be called by vercel-queue without user context
-// or directly with auth context
 export async function processUpdateDueDate(
   ids: string[],
-  args: { dueDate: Date | null; userId?: string }
+  args: { dueDate: Date | null; userId: string }
 ) {
   // Filter out invalid IDs and optimistic todos (temp- prefix)
   const validIds = ids.filter((id) => id && id.length > 0 && !id.startsWith('temp-'))
@@ -115,10 +113,8 @@ export async function processUpdateDueDate(
     )
   }
 
-  revalidatePath("/app/todos")
-  
   // Get the user ID for cache tag revalidation
-  const userIdForCache = args.userId || (await stackServerApp.getUser())?.id
+  const userIdForCache = args.userId
   if (userIdForCache) {
     // Match the exact cacheTag pattern from page servers
     revalidateTag(`${userIdForCache}:todos`)
@@ -153,7 +149,7 @@ export async function updateDueDate(formData: FormData) {
 
   try {
     // Execute immediately instead of queuing
-    await processUpdateDueDate(todoIds, { dueDate })
+    await processUpdateDueDate(todoIds, { dueDate, userId: user.id })
     return { success: true }
   } catch (error) {
     console.error("Failed to update due dates:", error)

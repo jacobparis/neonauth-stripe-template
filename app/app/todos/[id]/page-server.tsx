@@ -20,7 +20,7 @@ export async function TodoItemPageServer({
   userId: string
 }) {
   'use cache'
-  cacheTag(userId, 'todos', todoId)
+  cacheTag(`${userId}:todos:${todoId}`)
 
   const [todo, rateLimitStatus, comments, user] = await Promise.all([
     getTodo({ userId, todoId }),

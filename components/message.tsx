@@ -15,6 +15,7 @@ import { PreviewAttachment } from './preview-attachment'
 import { formatDistanceToNow } from 'date-fns'
 import { useCopyToClipboard } from 'usehooks-ts'
 import { toast } from 'sonner'
+import { useSearchParams } from 'next/navigation'
 
 const PurePreviewMessage = ({
   chatId,
@@ -220,6 +221,58 @@ const PurePreviewMessage = ({
               }
 
               if (state === 'result') {
+                // Trigger optimistic updates based on successful tool results
+                const result = toolInvocation.result
+                if (result?.success && chatId) {
+                  if (toolName === 'updateTodoTitle' && result.newTitle) {
+                    window.dispatchEvent(
+                      new CustomEvent('todo-optimistic-update', {
+                        detail: {
+                          todoId: chatId,
+                          type: 'title',
+                          value: result.newTitle,
+                        },
+                      }),
+                    )
+                  } else if (
+                    toolName === 'updateTodoDescription' &&
+                    result.newDescription !== undefined
+                  ) {
+                    window.dispatchEvent(
+                      new CustomEvent('todo-optimistic-update', {
+                        detail: {
+                          todoId: chatId,
+                          type: 'description',
+                          value: result.newDescription,
+                        },
+                      }),
+                    )
+                  } else if (toolName === 'updateTodoDueDate') {
+                    window.dispatchEvent(
+                      new CustomEvent('todo-optimistic-update', {
+                        detail: {
+                          todoId: chatId,
+                          type: 'dueDate',
+                          value: result.newDueDate,
+                        },
+                      }),
+                    )
+                  } else if (
+                    toolName === 'toggleTodoCompletion' &&
+                    result.completed !== undefined
+                  ) {
+                    window.dispatchEvent(
+                      new CustomEvent('todo-optimistic-update', {
+                        detail: {
+                          todoId: chatId,
+                          type: 'completed',
+                          value: result.completed,
+                        },
+                      }),
+                    )
+                  }
+                }
+
                 return (
                   <div
                     key={toolCallId}

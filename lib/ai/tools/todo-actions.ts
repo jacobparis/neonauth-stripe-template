@@ -3,8 +3,9 @@ import { z } from 'zod'
 import { revalidatePath, revalidateTag } from 'next/cache'
 import { eq } from 'drizzle-orm'
 import { db } from '@/lib/db'
-import { todos } from '@/drizzle/schema'
+import { todos, activities } from '@/drizzle/schema'
 import { notifyWatchers } from '@/app/api/notifications/notifications'
+import { nanoid } from 'nanoid'
 
 export const updateTodoTitle = tool({
   description: 'Update the todo title to any text',
@@ -22,6 +23,14 @@ export const updateTodoTitle = tool({
         })
         .where(eq(todos.id, todoId))
         .returning()
+
+      // Create activity message
+      await db.insert(activities).values({
+        id: nanoid(8),
+        content: `AI updated title to "${title.trim()}"`,
+        todoId,
+        userId: 'ai-assistant',
+      })
 
       await notifyWatchers({
         taskId: todoId,
@@ -68,6 +77,14 @@ export const updateTodoDescription = tool({
         })
         .where(eq(todos.id, todoId))
         .returning()
+
+      // Create activity message
+      await db.insert(activities).values({
+        id: nanoid(8),
+        content: 'AI updated description',
+        todoId,
+        userId: 'ai-assistant',
+      })
 
       await notifyWatchers({
         taskId: todoId,
@@ -117,13 +134,21 @@ export const updateTodoDueDate = tool({
         .where(eq(todos.id, todoId))
         .returning()
 
-      const message = newDueDate 
+      const activityMessage = newDueDate 
         ? `AI set due date to ${newDueDate.toLocaleDateString()}`
         : 'AI removed due date'
 
+      // Create activity message
+      await db.insert(activities).values({
+        id: nanoid(8),
+        content: activityMessage,
+        todoId,
+        userId: 'ai-assistant',
+      })
+
       await notifyWatchers({
         taskId: todoId,
-        message,
+        message: activityMessage,
         type: 'info'
       })
 
@@ -177,13 +202,23 @@ export const toggleTodoCompletion = tool({
         .where(eq(todos.id, todoId))
         .returning()
 
-      const message = completed 
-        ? 'AI marked todo as completed'
-        : 'AI marked todo as incomplete'
+      const activityMessage = completed 
+        ? 'AI marked as completed'
+        : 'AI marked as incomplete'
+
+      // Create activity message
+      await db.insert(activities).values({
+        id: nanoid(8),
+        content: activityMessage,
+        todoId,
+        userId: 'ai-assistant',
+      })
 
       await notifyWatchers({
         taskId: todoId,
-        message,
+        message: completed 
+          ? 'AI marked todo as completed'
+          : 'AI marked todo as incomplete',
         type: completed ? 'success' : 'info'
       })
 

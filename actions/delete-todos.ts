@@ -76,8 +76,6 @@ export async function processDeleteTodos(ids: string[], userId?: string) {
     )
   }
 
-  revalidatePath("/app/todos")
-  revalidatePath("/app/todos/archived")
   
   // Get the user ID for cache tag revalidation
   const userIdForCache = userId || (await stackServerApp.getUser())?.id

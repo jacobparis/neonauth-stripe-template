@@ -232,11 +232,7 @@ export async function addTodo(formData: FormData) {
       })
     }
 
-    revalidatePath("/")
-    
-    // Add cache tag revalidation
     revalidateTag(`${user.id}:todos`)
-    revalidateTag(`${user.id}:archived-todos`)
     
     return { success: true }
   } catch (error) {

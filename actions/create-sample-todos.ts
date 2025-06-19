@@ -230,11 +230,7 @@ export async function createSampleTodos() {
     userId: user.id,
   })))
   
-  revalidatePath("/app/todos")
-  
-  // Add cache tag revalidation
   revalidateTag(`${user.id}:todos`)
-  revalidateTag(`${user.id}:archived-todos`)
   
   return { success: true }
 }
