@@ -10,10 +10,10 @@ export async function processTask(task: QueueTask) {
   try {
     switch (task.type) {
       case "deleteTodos":
-        await processDeleteTodos(task.ids, task.userId)
+        await processDeleteTodos({ ids: task.ids, userId: task.userId })
         break
       case "generateDescription":
-        await generateTodoDescription(task.todoId, task.title, task.userId)
+        await generateTodoDescription({ todoId: task.todoId, title: task.title, userId: task.userId })
         break
       default: {
         throw new Error(`Unknown task type: ${task.type}`)

@@ -8,16 +8,21 @@ import { stackServerApp } from "@/stack"
 import { createNotification } from '@/app/api/notifications/notifications'
 import { nanoid } from 'nanoid'
 
-export async function processUpdateDueDate(
-  ids: string[],
-  args: { dueDate: Date | null; userId: string }
-) {
+export async function processUpdateDueDate({
+  ids,
+  dueDate,
+  userId
+}: {
+  ids: string[]
+  dueDate: Date | null
+  userId: string
+}) {
   // Filter out invalid IDs and optimistic todos (temp- prefix)
   const validIds = ids.filter((id) => id && id.length > 0 && !id.startsWith('temp-'))
   if (validIds.length === 0) return
 
   // When called via vercel-queue, use the passed userId
-  if (args.userId) {
+  if (userId) {
     // Get current todos to check for changes
     const currentTodos = await db.query.todos.findMany({
       where: inArray(todos.id, validIds)
@@ -25,25 +30,25 @@ export async function processUpdateDueDate(
 
     const [updatedTodos] = await db
       .update(todos)
-      .set({ dueDate: args.dueDate })
+      .set({ dueDate })
       .where(inArray(todos.id, validIds))
       .returning()
 
     // Create activity comments for todos that actually changed
     for (const currentTodo of currentTodos) {
       const currentDueDateStr = currentTodo.dueDate?.toDateString()
-      const newDueDateStr = args.dueDate?.toDateString()
+      const newDueDateStr = dueDate?.toDateString()
       
       if (currentDueDateStr !== newDueDateStr) {
-        const dueDateComment = args.dueDate 
-          ? `Due date set to ${args.dueDate.toLocaleDateString()}`
+        const dueDateComment = dueDate 
+          ? `Due date set to ${dueDate.toLocaleDateString()}`
           : "Due date removed"
 
         await db.insert(activities).values({
           id: nanoid(8),
           content: dueDateComment,
           todoId: currentTodo.id,
-          userId: args.userId,
+          userId,
         })
       }
     }
@@ -52,10 +57,10 @@ export async function processUpdateDueDate(
     await Promise.all(
       validIds.map(id => 
         createNotification({
-          userId: args.userId!,
+          userId: userId!,
           type: "info",
-          message: args.dueDate 
-            ? `Due date updated to ${args.dueDate.toLocaleDateString()}`
+          message: dueDate 
+            ? `Due date updated to ${dueDate.toLocaleDateString()}`
             : "Due date removed",
           taskId: id,
         })
@@ -75,18 +80,18 @@ export async function processUpdateDueDate(
 
     const [updatedTodos] = await db
       .update(todos)
-      .set({ dueDate: args.dueDate })
+      .set({ dueDate })
       .where(inArray(todos.id, validIds))
       .returning()
 
     // Create activity comments for todos that actually changed
     for (const currentTodo of currentTodos) {
       const currentDueDateStr = currentTodo.dueDate?.toDateString()
-      const newDueDateStr = args.dueDate?.toDateString()
+      const newDueDateStr = dueDate?.toDateString()
       
       if (currentDueDateStr !== newDueDateStr) {
-        const dueDateComment = args.dueDate 
-          ? `Due date set to ${args.dueDate.toLocaleDateString()}`
+        const dueDateComment = dueDate 
+          ? `Due date set to ${dueDate.toLocaleDateString()}`
           : "Due date removed"
 
         await db.insert(activities).values({
@@ -104,8 +109,8 @@ export async function processUpdateDueDate(
         createNotification({
           userId: user.id,
           type: "info",
-          message: args.dueDate 
-            ? `Due date updated to ${args.dueDate.toLocaleDateString()}`
+          message: dueDate 
+            ? `Due date updated to ${dueDate.toLocaleDateString()}`
             : "Due date removed",
           taskId: id,
         })
@@ -114,42 +119,44 @@ export async function processUpdateDueDate(
   }
   
   // Match the exact cacheTag pattern from page servers
-  revalidateTag(`${args.userId}:todos`)
-  revalidateTag(`${args.userId}:archived-todos`)
+  revalidateTag(`${userId}:todos`)
+  revalidateTag(`${userId}:archived-todos`)
 
   for (const id of validIds) {
-    revalidateTag(`${args.userId}:todos:${id}`)
+    revalidateTag(`${userId}:todos:${id}`)
   }
   
   return { success: true }
 }
 
 // Public action that handles both single and multiple updates
-export async function updateDueDate(formData: FormData) {
+export async function updateDueDate({ 
+  id, 
+  ids, 
+  dueDate 
+}: { 
+  id?: string
+  ids?: string[]
+  dueDate: Date | null 
+}) {
   const user = await stackServerApp.getUser()
   if (!user) {
     throw new Error("Not authenticated")
   }
 
-  // Parse the form data
-  const id = formData.get("id")
-  const ids = formData.get("ids")
-  const dueDateStr = formData.get("dueDate") as string | null
-  const dueDate = dueDateStr ? new Date(dueDateStr) : null
-
   // Get the IDs to update
   let todoIds: string[]
   if (id) {
-    todoIds = [id as string]
+    todoIds = [id]
   } else if (ids) {
-    todoIds = JSON.parse(ids as string)
+    todoIds = ids
   } else {
     throw new Error("No todo IDs provided")
   }
 
   try {
     // Execute immediately instead of queuing
-    await processUpdateDueDate(todoIds, { dueDate, userId: user.id })
+    await processUpdateDueDate({ ids: todoIds, dueDate, userId: user.id })
     return { success: true }
   } catch (error) {
     console.error("Failed to update due dates:", error)
@@ -157,7 +164,7 @@ export async function updateDueDate(formData: FormData) {
   }
 }
 
-export async function bulkUpdateDueDate(todoIds: string[], dueDate: Date | null) {
+export async function bulkUpdateDueDate({ todoIds, dueDate }: { todoIds: string[], dueDate: Date | null }) {
   if (!todoIds.length) {
     return { success: true }
   }

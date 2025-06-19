@@ -15,7 +15,7 @@ const todoResponseSchema = z.object({
   questions: z.array(z.string()).describe('Relevant questions that might help clarify requirements or next steps')
 })
 
-export async function generateTodoDescription(todoId: string, title: string, userId: string) {
+export async function generateTodoDescription({ todoId, title, userId }: { todoId: string, title: string, userId: string }) {
   try {
     // Get the AI provider
     const ai = getAI()

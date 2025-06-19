@@ -9,7 +9,7 @@ import React, {
 } from 'react'
 import { updateDueDate } from '@/actions/update-due-date'
 import { toggleTodoCompleted } from '@/actions/toggle-completed'
-import { toggleSoftDelete } from '@/actions/delete-todos'
+import { deleteTodo } from '@/actions/delete-todos'
 import { format } from 'date-fns'
 import type { Todo } from '@/drizzle/schema'
 
@@ -89,10 +89,7 @@ export function TodoStateProvider({
 
   const handleUpdateDueDate = (newDate: Date | undefined) => {
     startTransition(async () => {
-      const formData = new FormData()
-      formData.append('id', todo.id.toString())
-      formData.append('dueDate', newDate?.toISOString() || '')
-      await updateDueDate(formData)
+      await updateDueDate({ id: todo.id, dueDate: newDate || null })
     })
     setDate(newDate)
 
@@ -109,10 +106,7 @@ export function TodoStateProvider({
 
   const handleToggleCompleted = () => {
     startTransition(async () => {
-      const formData = new FormData()
-      formData.append('id', todo.id.toString())
-      formData.append('completed', (!completed).toString())
-      await toggleTodoCompleted(formData)
+      await toggleTodoCompleted({ id: todo.id, completed: !completed })
     })
     setCompleted(!completed)
 
@@ -126,10 +120,7 @@ export function TodoStateProvider({
 
   const handleToggleDeleted = () => {
     startTransition(async () => {
-      const formData = new FormData()
-      formData.append('id', todo.id.toString())
-      formData.append('deleted', (!deleted).toString())
-      await toggleSoftDelete(formData)
+      await deleteTodo({ ids: todo.id, isDeleted: !deleted })
     })
     setDeleted(!deleted)
 

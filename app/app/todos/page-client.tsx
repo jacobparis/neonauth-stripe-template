@@ -401,7 +401,7 @@ export function TodosPageClient({
       newSet.delete(id)
       return newSet
     })
-    deleteTodo(id)
+    deleteTodo({ ids: id })
   }, [])
 
   const handleToggleCompleted = useCallback(
@@ -410,10 +410,7 @@ export function TodosPageClient({
         ...prev,
         { type: 'toggleCompleted', ids: new Set([id]), completed },
       ])
-      const formData = new FormData()
-      formData.append('id', id)
-      formData.append('completed', completed.toString())
-      toggleTodoCompleted(formData)
+      toggleTodoCompleted({ id, completed })
     },
     [],
   )
@@ -423,10 +420,7 @@ export function TodosPageClient({
       ...prev,
       { type: 'reschedule', ids: new Set([id]), dueDate: date },
     ])
-    const formData = new FormData()
-    formData.append('id', id)
-    formData.append('dueDate', date?.toISOString() || '')
-    updateDueDate(formData)
+    updateDueDate({ id, dueDate: date })
   }, [])
 
   // Memoize the todo groups
@@ -446,7 +440,7 @@ export function TodosPageClient({
     setSelectedTodoIds(new Set())
 
     // The server action handles batching/scheduling
-    deleteTodo(idsToDelete)
+    deleteTodo({ ids: idsToDelete })
   }
 
   // Reschedule multiple todos
@@ -460,10 +454,7 @@ export function TodosPageClient({
     setIsRescheduleCalendarOpen(false)
 
     // The server action handles batching/scheduling
-    const formData = new FormData()
-    formData.append('ids', JSON.stringify(idsToReschedule))
-    formData.append('dueDate', date?.toISOString() || '')
-    updateDueDate(formData)
+    updateDueDate({ ids: idsToReschedule, dueDate: date || null })
   }
 
   // Mark multiple todos as completed/uncompleted
@@ -476,10 +467,7 @@ export function TodosPageClient({
     setSelectedTodoIds(new Set())
 
     // The server action handles batching/scheduling
-    const formData = new FormData()
-    formData.append('ids', JSON.stringify(idsToToggle))
-    formData.append('completed', completed.toString())
-    toggleTodoCompleted(formData)
+    toggleTodoCompleted({ ids: idsToToggle, completed })
   }
 
   // Select or deselect all visible todos
