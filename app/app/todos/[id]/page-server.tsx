@@ -10,7 +10,7 @@ import Link from 'next/link'
 import { TodoStateProvider } from './todo-state-context'
 import { TodoItemPageClient } from './page-client'
 import { WatchButton } from './watch-button'
-import { ActivityChat } from './activity-chat'
+import { Chat } from '@/components/chat'
 
 export async function TodoItemPageServer({
   todoId,
@@ -28,16 +28,6 @@ export async function TodoItemPageServer({
     getComments({ todoId, userId, includeActivity: true }),
     getUserById(userId),
   ])
-
-  console.log(
-    'page-server comments:',
-    comments.map((c) => ({
-      id: c.id,
-      content: c.content,
-      isActivity: c.isActivity,
-      type: c.isActivity ? 'activity' : 'comment',
-    })),
-  )
 
   if (!user) {
     throw new Error('User not found')
@@ -78,20 +68,20 @@ export async function TodoItemPageServer({
                 </div>
               }
             >
-              <ActivityChat
-                todoId={todo.id}
-                initialComments={comments}
-                user={{
-                  id: userId,
-                  displayName: user.name,
-                  primaryEmail: user.email,
-                  profileImageUrl: user.image,
-                }}
-                todo={{
-                  title: todo.title,
-                  description: todo.description,
-                }}
-                rateLimitStatus={rateLimitStatus}
+              <Chat
+                id={todoId}
+                initialMessages={comments.map((comment) => ({
+                  id: comment.id,
+                  role:
+                    comment.userId === 'ai-assistant' ? 'assistant' : 'user',
+                  parts: [{ type: 'text' as const, text: comment.content }],
+                  content: '',
+                  metadata: {
+                    isActivity: comment.isActivity,
+                  },
+                }))}
+                isReadonly={false}
+                autoResume={true}
               />
             </Suspense>
           </div>

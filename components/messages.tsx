@@ -12,6 +12,7 @@ interface MessagesProps {
   setMessages: UseChatHelpers['setMessages']
   reload: UseChatHelpers['reload']
   isReadonly: boolean
+  initialMessages: Array<UIMessage>
 }
 
 function PureMessages({
@@ -21,6 +22,7 @@ function PureMessages({
   setMessages,
   reload,
   isReadonly,
+  initialMessages,
 }: MessagesProps) {
   return (
     <div className="flex flex-col min-w-0 pt-4">
@@ -61,7 +63,8 @@ function PureMessages({
 
       {status === 'submitted' &&
         messages.length > 0 &&
-        messages[messages.length - 1].role === 'user' && <ThinkingMessage />}
+        messages[messages.length - 1].role === 'user' &&
+        messages.length > initialMessages.length && <ThinkingMessage />}
     </div>
   )
 }
@@ -70,6 +73,8 @@ export const Messages = memo(PureMessages, (prevProps, nextProps) => {
   if (prevProps.status !== nextProps.status) return false
   if (prevProps.status && nextProps.status) return false
   if (prevProps.messages.length !== nextProps.messages.length) return false
+  if (prevProps.initialMessages.length !== nextProps.initialMessages.length)
+    return false
   if (!equal(prevProps.messages, nextProps.messages)) return false
 
   return true

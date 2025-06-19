@@ -10,7 +10,7 @@ import { nanoid } from 'nanoid'
 
 // This function will be called by vercel-queue without user context
 // or directly with auth context
-export async function processDeleteTodos(ids: string[], userId?: string) {
+export async function processDeleteTodos(ids: string[], userId: string) {
   // Filter out invalid IDs and optimistic todos (temp- prefix)
   const validIds = ids.filter((id) => id && id.length > 0 && !id.startsWith('temp-'))
   if (validIds.length === 0) return
@@ -76,13 +76,12 @@ export async function processDeleteTodos(ids: string[], userId?: string) {
     )
   }
 
-  
-  // Get the user ID for cache tag revalidation
-  const userIdForCache = userId || (await stackServerApp.getUser())?.id
-  if (userIdForCache) {
-    // Match the exact cacheTag pattern from page servers: cacheTag(userId, 'todos')
-    revalidateTag(`${userIdForCache}:todos`)
-    revalidateTag(`${userIdForCache}:archived-todos`)
+  // Match the exact cacheTag pattern from page servers
+  revalidateTag(`${userId}:todos`)
+  revalidateTag(`${userId}:archived-todos`)
+
+  for (const id of validIds) {
+    revalidateTag(`${userId}:todos:${id}`)
   }
   
   return { success: true }

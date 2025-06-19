@@ -88,11 +88,13 @@ export async function processToggleCompleted(ids: string[], payload: { completed
     )
   }
 
-  if (payload.userId) {
-    // Match the exact cacheTag pattern from page servers
-    revalidateTag(`${payload.userId}:todos`)
-    revalidateTag(`${payload.userId}:archived-todos`)
+  // Match the exact cacheTag pattern from page servers
+  revalidateTag(`${payload.userId}:todos`)
+  revalidateTag(`${payload.userId}:archived-todos`)
+
+  for (const id of validIds) {
+    revalidateTag(`${payload.userId}:todos:${id}`)
   }
-  
+
   return { success: true }
 }

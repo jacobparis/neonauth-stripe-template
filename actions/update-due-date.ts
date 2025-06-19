@@ -112,13 +112,13 @@ export async function processUpdateDueDate(
       )
     )
   }
+  
+  // Match the exact cacheTag pattern from page servers
+  revalidateTag(`${args.userId}:todos`)
+  revalidateTag(`${args.userId}:archived-todos`)
 
-  // Get the user ID for cache tag revalidation
-  const userIdForCache = args.userId
-  if (userIdForCache) {
-    // Match the exact cacheTag pattern from page servers
-    revalidateTag(`${userIdForCache}:todos`)
-    revalidateTag(`${userIdForCache}:archived-todos`)
+  for (const id of validIds) {
+    revalidateTag(`${args.userId}:todos:${id}`)
   }
   
   return { success: true }
