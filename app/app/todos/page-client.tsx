@@ -76,30 +76,30 @@ function AddTodoForm({
 
     setIsGenerating(true)
 
+    // Generate a clean title from the prompt
+    const generatedResult = await generateTodoFromUserMessage({
+      prompt: text.trim(),
+    })
+    const finalTitle = generatedResult?.title || text.trim()
+    const parsedDueDate = generatedResult?.dueDate
+      ? new Date(generatedResult.dueDate)
+      : null
+    const finalDueDate = parsedDueDate || selectedDueDate
+
+    // Create an optimistic todo with a temporary nanoid
+    const optimisticTodo: Todo = {
+      id: `temp-${nanoid(8)}`,
+      title: finalTitle,
+      description: null,
+      completed: false,
+      dueDate: finalDueDate || null,
+      userId: '', // Will be set by server
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+    }
+
     try {
-      // Generate a clean title from the prompt
-      const generatedResult = await generateTodoFromUserMessage({
-        prompt: text.trim(),
-      })
-      const finalTitle = generatedResult?.title || text.trim()
-      const parsedDueDate = generatedResult?.dueDate
-        ? new Date(generatedResult.dueDate)
-        : null
-      const finalDueDate = parsedDueDate || selectedDueDate
-
-      // Create an optimistic todo with a temporary nanoid
-      const optimisticTodo: Todo = {
-        id: `temp-${nanoid(8)}`,
-        title: finalTitle,
-        description: null,
-        completed: false,
-        dueDate: finalDueDate || null,
-        userId: '', // Will be set by server
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        deletedAt: null,
-      }
-
       setPendingEdits((prev) => [
         ...prev,
         { type: 'add', todo: optimisticTodo },
@@ -112,14 +112,30 @@ function AddTodoForm({
         serverFormData.append('dueDate', finalDueDate.toISOString())
       }
 
-      // Send the actual request (non-blocking)
-      addTodo(serverFormData)
+      // Send the actual request and wait for completion
+      await addTodo(serverFormData)
+
+      // Clear the pending edit once the server action completes
+      // The real todo will come from the server through revalidation
+      setPendingEdits((prev) =>
+        prev.filter(
+          (edit) =>
+            !(edit.type === 'add' && edit.todo.id === optimisticTodo.id),
+        ),
+      )
 
       // Reset form state
       setTodoText('')
       setSelectedDueDate(undefined)
       onClose()
     } catch (error) {
+      // If there was an error, remove the optimistic todo
+      setPendingEdits((prev) =>
+        prev.filter(
+          (edit) =>
+            !(edit.type === 'add' && edit.todo.id === optimisticTodo.id),
+        ),
+      )
     } finally {
       setIsGenerating(false)
     }
