@@ -15,9 +15,9 @@ export async function publishTask<T extends QueueTask>(task: T, options?: {
   const client = new Client({ token: process.env.QSTASH_TOKEN! })
 
   const url =
-    process.env.NODE_ENV === "development"
-      ? `http://localhost:${process.env.PORT}/api/queue`
-      : `https://${process.env.VERCEL_URL}/api/queue`
+    process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}/api/queue`
+      : `http://localhost:3000/api/queue`
 
   await client.publishJSON({
     url,
