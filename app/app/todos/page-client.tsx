@@ -253,15 +253,19 @@ const TodoItem = memo(function TodoItem({
         </div>
 
         <div className="min-w-0">
-          <Link
-            href={`/app/todos/${todo.id}`}
-            prefetch={true}
-            className={`text-sm block truncate hover:underline ${
-              todo.completed ? 'line-through text-muted-foreground' : ''
-            }`}
-          >
-            {todo.title}
-          </Link>
+          {todo.id.startsWith('temp-') ? (
+            <span className="text-sm block truncate">{todo.title}</span>
+          ) : (
+            <Link
+              href={`/app/todos/${todo.id}`}
+              prefetch={true}
+              className={`text-sm block truncate hover:underline ${
+                todo.completed ? 'line-through text-muted-foreground' : ''
+              }`}
+            >
+              {todo.title}
+            </Link>
+          )}
         </div>
       </div>
 
