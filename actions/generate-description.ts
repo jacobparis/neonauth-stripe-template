@@ -1,7 +1,7 @@
 "use server"
 
 import { db } from "@/lib/db"
-import { todos, comments } from "@/drizzle/schema"
+import { todos, comments, users_sync } from "@/drizzle/schema"
 import { eq } from "drizzle-orm"
 import { revalidateTag } from "next/cache"
 import { createNotification } from '@/app/api/notifications/notifications'
@@ -51,7 +51,7 @@ Generate a helpful response with:
         id: nanoid(8),
         content: question,
         todoId,
-        userId,
+        userId: 'ai-assistant',
       })
     }
 
