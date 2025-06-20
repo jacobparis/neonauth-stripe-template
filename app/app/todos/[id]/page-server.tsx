@@ -1,7 +1,10 @@
 import { getComments, getTodo, getUserById } from '@/lib/actions'
 import { Suspense } from 'react'
 import { getRateLimitStatus } from '@/lib/rate-limit'
-import { unstable_cacheTag as cacheTag } from 'next/cache'
+import {
+  unstable_cacheTag as cacheTag,
+  unstable_cache as cache,
+} from 'next/cache'
 
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
@@ -19,15 +22,21 @@ export async function TodoItemPageServer({
   todoId: string
   userId: string
 }) {
-  'use cache'
-  cacheTag(`${userId}:todos:${todoId}`)
-
-  const [todo, rateLimitStatus, comments, user] = await Promise.all([
-    getTodo({ userId, todoId }),
-    getRateLimitStatus(userId),
-    getComments({ todoId, userId, includeActivity: true }),
-    getUserById(userId),
-  ])
+  const [todo, rateLimitStatus, comments, user] = await cache(
+    async (userId: string, todoId: string) => {
+      return Promise.all([
+        getTodo({ userId, todoId }),
+        getRateLimitStatus(userId),
+        getComments({ todoId, userId, includeActivity: true }),
+        getUserById(userId),
+      ])
+    },
+    [userId, todoId],
+    {
+      tags: [`${userId}:todos:${todoId}`],
+      revalidate: 60,
+    },
+  )(userId, todoId)
 
   if (!user) {
     throw new Error('User not found')

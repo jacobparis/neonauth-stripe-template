@@ -3,16 +3,19 @@ import { getArchivedTodos } from '@/lib/actions'
 import { getRateLimitStatus } from '@/lib/rate-limit'
 import { Suspense } from 'react'
 import TodosLoading from '../loading'
-import { unstable_cacheTag as cacheTag } from 'next/cache'
+import { unstable_cache as cache } from 'next/cache'
 
 export async function ArchivedTodosPageServer({ userId }: { userId: string }) {
-  'use cache'
-  cacheTag(`${userId}:archived-todos`)
-
-  const [archivedTodos, rateLimitStatus] = await Promise.all([
-    getArchivedTodos(userId),
-    getRateLimitStatus(userId),
-  ])
+  const [archivedTodos, rateLimitStatus] = await cache(
+    async (id: string) => {
+      return Promise.all([getArchivedTodos(id), getRateLimitStatus(id)])
+    },
+    [userId],
+    {
+      tags: [`${userId}:archived-todos`],
+      revalidate: 60,
+    },
+  )(userId)
 
   return (
     <Suspense fallback={<TodosLoading />}>
