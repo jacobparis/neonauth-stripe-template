@@ -36,8 +36,8 @@ export async function TodoItemPageServer({
   return (
     <div>
       {/* Back button */}
-      <div>
-        <Button variant="outline" asChild size="sm">
+      <div className="mt-4">
+        <Button variant="outline" asChild size="sm" className="mt-4">
           <Link href="/app/todos">
             <ArrowLeft className="h-5 w-5" />
             <span>Back to todos</span>
