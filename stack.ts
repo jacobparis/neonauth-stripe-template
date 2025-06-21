@@ -1,21 +1,26 @@
-import "server-only"
-import { StackServerApp } from "@stackframe/stack"
-import { z } from "zod"
-import { createRemoteJWKSet, jwtVerify } from "jose"
-import type { ReadonlyRequestCookies } from "next/dist/server/web/spec-extension/adapters/request-cookies"
-import type { RequestCookies } from "next/dist/server/web/spec-extension/request-cookies"
+import 'server-only'
+import { StackServerApp } from '@stackframe/stack'
+import { z } from 'zod'
+import { createRemoteJWKSet, jwtVerify } from 'jose'
+import type { ReadonlyRequestCookies } from 'next/dist/server/web/spec-extension/adapters/request-cookies'
+import type { RequestCookies } from 'next/dist/server/web/spec-extension/request-cookies'
 
-export const stackServerApp = new StackServerApp({
-  tokenStore: "nextjs-cookie",
-  redirectMethod: "nextjs",
-  
-  urls: {
-    afterSignIn: "/app",
-    afterSignUp: "/app",
-    signIn: "/sign-in",
-    signUp: "/sign-up",
-  },
-})
+export const stackServerApp = process.env.NEXT_PUBLIC_STACK_PROJECT_ID
+  ? new StackServerApp({
+      tokenStore: 'nextjs-cookie',
+      redirectMethod: 'nextjs',
+
+      urls: {
+        afterSignIn: '/app',
+        afterSignUp: '/app',
+        signIn: '/sign-in',
+        signUp: '/sign-up',
+      },
+    })
+  // This avoids throwing an error if we don't have the env
+  // which lets us render the template setup page
+  // Feel free to remove this once you've set that env var
+  : (null as never)
 
 const TupleSchema = z.tuple([z.string(), z.string()])
 
@@ -34,8 +39,10 @@ async function verifyToken(token: string) {
   }
 }
 
-export async function getAccessToken(cookies: ReadonlyRequestCookies | RequestCookies) {
-  const accessToken = cookies.get("stack-access")?.value
+export async function getAccessToken(
+  cookies: ReadonlyRequestCookies | RequestCookies,
+) {
+  const accessToken = cookies.get('stack-access')?.value
   if (!accessToken) return null
 
   const tokenTuple = TupleSchema.safeParse(JSON.parse(accessToken))
@@ -48,7 +55,9 @@ export async function getAccessToken(cookies: ReadonlyRequestCookies | RequestCo
  * Check access token in the cookie
  * Use this in middleware
  */
-export async function checkAccessToken(cookies: ReadonlyRequestCookies | RequestCookies) {
+export async function checkAccessToken(
+  cookies: ReadonlyRequestCookies | RequestCookies,
+) {
   const accessToken = await getAccessToken(cookies)
   if (!accessToken) return null
 

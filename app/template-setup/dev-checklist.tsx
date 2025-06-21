@@ -60,7 +60,6 @@ export async function DevChecklistPage() {
     migrationsRun,
   ].filter(Boolean).length
 
-  const progressPercentage = Math.round((completedSteps / totalSteps) * 100)
   const isComplete = completedSteps === totalSteps
 
   // Check if we can register Stripe webhook

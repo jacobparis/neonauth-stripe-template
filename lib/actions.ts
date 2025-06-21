@@ -15,6 +15,8 @@ import { checkMessageRateLimit } from '@/lib/rate-limit'
 import { publishTask } from "@/app/api/queue/route"
 import { nanoid } from 'nanoid'
 
+// If the user has credits available, we'll prefill info in their todo based on the prompt
+// otherwise just use it directly and give them a blank one
 export async function generateTodoFromUserMessage({
   prompt,
 }: {
@@ -86,7 +88,6 @@ export async function getTodos(userId: string) {
       return true
     })
     
-    console.log(activeTodos)
     return activeTodos
   } catch (error) {
     console.error("Failed to fetch todos:", error)

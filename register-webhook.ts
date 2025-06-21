@@ -41,7 +41,7 @@ const events = [
 ]
 
 // Construct the webhook URL
-const webhookUrl = `${VERCEL_URL}/api/stripe`
+const webhookUrl = `https://${VERCEL_URL}/api/stripe`
 
 async function registerWebhook() {
   console.log(`🔄 Registering Stripe webhook for ${webhookUrl}...`)
