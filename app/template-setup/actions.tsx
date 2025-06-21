@@ -30,12 +30,22 @@ export async function getTableStatus() {
     const results = await Promise.all(
       tables.map(async (table) => {
         try {
-          const result = await db.execute(sql`
-            SELECT EXISTS (
-              SELECT 1 FROM information_schema.tables 
-              WHERE table_name = ${table}
-            ) as exists
-          `)
+          let result
+          if (table === 'users_sync') {
+            result = await db.execute(sql`
+              SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_schema = 'neon_auth' AND table_name = ${table}
+              ) as exists
+            `)
+          } else {
+            result = await db.execute(sql`
+              SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_name = ${table}
+              ) as exists
+            `)
+          }
           return { table, exists: result.rows[0]?.exists || false }
         } catch (error) {
           return { table, exists: false }
@@ -149,12 +159,22 @@ export async function checkMigrations() {
     const results = await Promise.all(
       tables.map(async (table) => {
         try {
-          const result = await db.execute(sql`
-            SELECT EXISTS (
-              SELECT 1 FROM information_schema.tables 
-              WHERE table_name = ${table}
-            ) as exists
-          `)
+          let result
+          if (table === 'users_sync') {
+            result = await db.execute(sql`
+              SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_schema = 'neon_auth' AND table_name = ${table}
+              ) as exists
+            `)
+          } else {
+            result = await db.execute(sql`
+              SELECT EXISTS (
+                SELECT 1 FROM information_schema.tables 
+                WHERE table_name = ${table}
+              ) as exists
+            `)
+          }
           return { table, exists: result.rows[0]?.exists || false }
         } catch (error) {
           return { table, exists: false }
@@ -322,42 +342,30 @@ export async function runMigrations(formData: FormData): Promise<void> {
     // Run migrations manually
     console.log('Running migrations manually...')
 
-    // Create users_sync table
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS users_sync (
-        id text PRIMARY KEY,
-        email text NOT NULL,
-        display_name text,
-        profile_image_url text,
-        created_at timestamp DEFAULT now() NOT NULL,
-        updated_at timestamp DEFAULT now() NOT NULL
-      )
-    `)
-
-    // Create todos table
+    // Create todos table with correct column structure
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS todos (
-        id text PRIMARY KEY,
-        user_id text NOT NULL,
-        title text NOT NULL,
+        id varchar(255) PRIMARY KEY,
+        title varchar(255) NOT NULL,
+        description text,
         completed boolean DEFAULT false NOT NULL,
+        due_date timestamp,
+        user_id varchar(255),
         created_at timestamp DEFAULT now() NOT NULL,
         updated_at timestamp DEFAULT now() NOT NULL,
-        FOREIGN KEY (user_id) REFERENCES users_sync(id) ON DELETE CASCADE
+        deleted_at timestamp
       )
     `)
 
-    // Create comments table
+    // Create comments table with correct column structure
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS comments (
-        id text PRIMARY KEY,
-        todo_id text NOT NULL,
-        user_id text NOT NULL,
+        id varchar(255) PRIMARY KEY,
         content text NOT NULL,
+        todo_id varchar(255) NOT NULL,
+        user_id varchar(255) NOT NULL,
         created_at timestamp DEFAULT now() NOT NULL,
-        updated_at timestamp DEFAULT now() NOT NULL,
-        FOREIGN KEY (todo_id) REFERENCES todos(id) ON DELETE CASCADE,
-        FOREIGN KEY (user_id) REFERENCES users_sync(id) ON DELETE CASCADE
+        updated_at timestamp DEFAULT now() NOT NULL
       )
     `)
 
@@ -501,6 +509,7 @@ export async function configureRLS(formData: FormData): Promise<void> {
     const migrationDb = drizzle(connection, { schema })
 
     // Create roles if they don't exist
+    console.log('Creating roles...')
     await migrationDb.execute(sql`
       DO $$ 
       BEGIN
@@ -515,11 +524,13 @@ export async function configureRLS(formData: FormData): Promise<void> {
     `)
 
     // Create extension
+    console.log('Creating extension...')
     await migrationDb.execute(
       sql`CREATE EXTENSION IF NOT EXISTS pg_session_jwt;`,
     )
 
     // Grant permissions for existing tables
+    console.log('Granting permissions...')
     await migrationDb.execute(sql`
       GRANT SELECT, UPDATE, INSERT, DELETE ON ALL TABLES
       IN SCHEMA public
@@ -533,6 +544,7 @@ export async function configureRLS(formData: FormData): Promise<void> {
     `)
 
     // Set up default privileges
+    console.log('Setting up default privileges...')
     await migrationDb.execute(sql`
       ALTER DEFAULT PRIVILEGES
       IN SCHEMA public
@@ -548,32 +560,100 @@ export async function configureRLS(formData: FormData): Promise<void> {
     `)
 
     // Grant schema usage
+    console.log('Granting schema usage...')
     await migrationDb.execute(
       sql`GRANT USAGE ON SCHEMA public TO authenticated;`,
     )
     await migrationDb.execute(sql`GRANT USAGE ON SCHEMA public TO anonymous;`)
 
-    // Always enable RLS and create a basic policy for each table
-    await migrationDb.execute(sql`ALTER TABLE todos ENABLE ROW LEVEL SECURITY;`)
-    await migrationDb.execute(
-      sql`ALTER TABLE users_sync ENABLE ROW LEVEL SECURITY;`,
+    // Check if tables exist before enabling RLS with more detailed logging
+    console.log('Checking table existence...')
+    const tableChecks = await Promise.all([
+      migrationDb.execute(sql`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.tables 
+          WHERE table_schema = 'public' AND table_name = 'todos'
+        ) as exists
+      `),
+      migrationDb.execute(sql`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.tables 
+          WHERE table_schema = 'neon_auth' AND table_name = 'users_sync'
+        ) as exists
+      `),
+    ])
+
+    const todosExists = tableChecks[0].rows[0]?.exists
+    const usersExists = tableChecks[1].rows[0]?.exists
+
+    console.log(
+      `Tables status: todos=${todosExists}, users_sync=${usersExists}`,
     )
 
-    // Drop existing policies and create a permissive policy for each table
-    await migrationDb.execute(sql`DROP POLICY IF EXISTS todos_select ON todos;`)
-    await migrationDb.execute(
-      sql`CREATE POLICY todos_select ON todos FOR SELECT USING (true);`,
-    )
-    await migrationDb.execute(
-      sql`DROP POLICY IF EXISTS users_sync_select ON users_sync;`,
-    )
-    await migrationDb.execute(
-      sql`CREATE POLICY users_sync_select ON users_sync FOR SELECT USING (true);`,
-    )
+    // Only enable RLS and create policies for tables that exist
+    if (todosExists) {
+      try {
+        console.log('Enabling RLS for todos table...')
+        await migrationDb.execute(
+          sql`ALTER TABLE todos ENABLE ROW LEVEL SECURITY;`,
+        )
+        console.log('Creating policy for todos table...')
+        await migrationDb.execute(
+          sql`DROP POLICY IF EXISTS todos_select ON todos;`,
+        )
+        await migrationDb.execute(
+          sql`CREATE POLICY todos_select ON todos FOR SELECT USING (true);`,
+        )
+        console.log('✅ RLS configured for todos table')
+      } catch (error) {
+        console.error('❌ Error configuring RLS for todos table:', error)
+        throw error
+      }
+    } else {
+      console.log('⚠️ Todos table does not exist, skipping RLS configuration')
+    }
 
+    if (usersExists) {
+      try {
+        console.log('Enabling RLS for neon_auth.users_sync table...')
+        await migrationDb.execute(
+          sql`ALTER TABLE neon_auth.users_sync ENABLE ROW LEVEL SECURITY;`,
+        )
+        console.log('Creating policy for neon_auth.users_sync table...')
+        await migrationDb.execute(
+          sql`DROP POLICY IF EXISTS users_sync_select ON neon_auth.users_sync;`,
+        )
+        await migrationDb.execute(
+          sql`CREATE POLICY users_sync_select ON neon_auth.users_sync FOR SELECT USING (true);`,
+        )
+        console.log('✅ RLS configured for users_sync table')
+      } catch (error) {
+        console.error('❌ Error configuring RLS for users_sync table:', error)
+        // Let's check what's wrong with the table
+        try {
+          const tableInfo = await migrationDb.execute(sql`
+            SELECT column_name, data_type 
+            FROM information_schema.columns 
+            WHERE table_name = 'users_sync' AND table_schema = 'neon_auth'
+            ORDER BY ordinal_position
+          `)
+          console.log('users_sync table structure:', tableInfo.rows)
+        } catch (infoError) {
+          console.error('Could not get table info:', infoError)
+        }
+        throw error
+      }
+    } else {
+      console.log(
+        '⚠️ Users_sync table does not exist, skipping RLS configuration',
+      )
+    }
+
+    console.log('✅ RLS configuration completed successfully')
     revalidatePath('/dev-checklist')
   } catch (error) {
-    console.error('Error configuring RLS:', error)
+    console.error('❌ Error configuring RLS:', error)
+    throw error
   }
 }
 
