@@ -43,7 +43,7 @@ export async function DevChecklistPage() {
   }
 
   // Calculate progress percentage
-  const totalSteps = 13 // Total number of environment variables and migrations we're checking
+  const totalSteps = 17 // Updated total to include 4 QStash environment variables
   const completedSteps = [
     !!process.env.DATABASE_URL,
     !!process.env.NEXT_PUBLIC_STACK_PROJECT_ID,
@@ -55,6 +55,10 @@ export async function DevChecklistPage() {
     !!process.env.KV_URL,
     !!process.env.KV_REST_API_TOKEN,
     !!process.env.KV_REST_API_READ_ONLY_TOKEN,
+    !!process.env.QSTASH_CURRENT_SIGNING_KEY,
+    !!process.env.QSTASH_NEXT_SIGNING_KEY,
+    !!process.env.QSTASH_TOKEN,
+    !!process.env.QSTASH_URL,
     !!process.env.STRIPE_SECRET_KEY,
     !!process.env.STRIPE_WEBHOOK_SECRET,
     migrationsRun,
@@ -307,6 +311,87 @@ export async function DevChecklistPage() {
                 Redis documentation
                 <ExternalLink className="ml-1 h-3 w-3" />
               </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* Upstash QStash Section */}
+        <section className="rounded-lg border border-border overflow-hidden shadow-sm bg-card">
+          <div className="flex items-center px-4 py-3">
+            <div className="flex h-10 w-10 overflow-hidden items-center justify-center rounded-full bg-muted mr-2">
+              <img
+                src="https://vercel.com/api/www/avatar/cfffdb788d0e6372f30572554f6e82fb45d4792a?s=72"
+                alt="Upstash Logo"
+              />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">
+                Upstash QStash
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Message queue for background jobs and webhooks
+              </p>
+            </div>
+          </div>
+          <div className="p-4 space-y-4">
+            <div className="space-y-4">
+              <div className="flex items-start">
+                {!!process.env.QSTASH_CURRENT_SIGNING_KEY ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
+                ) : (
+                  <Circle className="h-5 w-5 text-muted-foreground mt-0.5 mr-3 flex-shrink-0" />
+                )}
+                <div>
+                  <EnvVar
+                    name="QSTASH_CURRENT_SIGNING_KEY"
+                    exists={!!process.env.QSTASH_CURRENT_SIGNING_KEY}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-start">
+                {!!process.env.QSTASH_NEXT_SIGNING_KEY ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
+                ) : (
+                  <Circle className="h-5 w-5 text-muted-foreground mt-0.5 mr-3 flex-shrink-0" />
+                )}
+                <div>
+                  <EnvVar
+                    name="QSTASH_NEXT_SIGNING_KEY"
+                    exists={!!process.env.QSTASH_NEXT_SIGNING_KEY}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-start">
+                {!!process.env.QSTASH_TOKEN ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
+                ) : (
+                  <Circle className="h-5 w-5 text-muted-foreground mt-0.5 mr-3 flex-shrink-0" />
+                )}
+                <div>
+                  <EnvVar
+                    name="QSTASH_TOKEN"
+                    exists={!!process.env.QSTASH_TOKEN}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-start">
+                {!!process.env.QSTASH_URL ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
+                ) : (
+                  <Circle className="h-5 w-5 text-muted-foreground mt-0.5 mr-3 flex-shrink-0" />
+                )}
+                <div>
+                  <EnvVar name="QSTASH_URL" exists={!!process.env.QSTASH_URL} />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 text-sm">
+              Integrations {' -> '} Manage Upstash {' -> '} Open in Upstash{' '}
+              {' -> '} QStash {' -> '} and then copy the environment variables
             </div>
           </div>
         </section>
