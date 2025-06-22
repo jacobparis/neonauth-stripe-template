@@ -1,8 +1,11 @@
-import { text, boolean, pgTable, serial, timestamp, integer, pgPolicy, varchar } from "drizzle-orm/pg-core"
+import { text, boolean, pgTable, serial, timestamp, integer, pgPolicy, varchar, pgSchema } from "drizzle-orm/pg-core"
 import { relations, sql } from "drizzle-orm"
 
+// Define the neon_auth schema
+const neonAuthSchema = pgSchema("neon_auth")
+
 // Define the neon_auth schema users_sync table
-export const users_sync = pgTable("users_sync", {
+export const users_sync = neonAuthSchema.table("users_sync", {
   id: varchar("id", { length: 255 }).primaryKey(),
   email: varchar("email", { length: 255 }),
   name: varchar("name", { length: 255 }),
