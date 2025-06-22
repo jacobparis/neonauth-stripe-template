@@ -525,7 +525,7 @@ export async function DevChecklistPage() {
                       !tablesStatus.jwks ? 'text-muted-foreground' : ''
                     }`}
                   >
-                    StackAuth JWKS
+                    NeonAuth Row Level Security JWKS
                   </p>
                   <>
                     {tablesStatus.jwksList &&

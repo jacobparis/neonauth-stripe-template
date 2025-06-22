@@ -255,32 +255,35 @@ export async function checkMigrations() {
     let jwksConfigured = false
     let jwksList = []
 
-    // Get project ID directly from the database instead of environment variable
+    // Use our API route instead of direct Neon API call
     if (process.env.NEON_API_KEY) {
       try {
-        const projectIdResult = await getNeonProjectId()
-        if (projectIdResult.success) {
-          const projectId = projectIdResult.projectId
+        const baseUrl = process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : process.env.NEXT_PUBLIC_VERCEL_URL
+          ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+          : 'http://localhost:3000'
 
-          const response = await fetch(
-            `https://console.neon.tech/api/v2/projects/${projectId}/jwks`,
-            {
-              headers: {
-                Authorization: `Bearer ${process.env.NEON_API_KEY}`,
-              },
+        const response = await fetch(
+          `${baseUrl}/template-setup/api/check-jwks`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
             },
-          )
-          if (response.ok) {
-            const { jwks } = await response.json()
-            console.log('JWKS:', jwks)
-            jwksConfigured = !!jwks
-            jwksList = jwks || []
-          }
+          },
+        )
+
+        if (response.ok) {
+          const data = await response.json()
+          jwksConfigured = data.jwks
+          jwksList = data.jwksList || []
         } else {
-          console.error('Failed to get Neon project ID:', projectIdResult.error)
+          const errorData = await response.json()
+          console.error('JWKS check failed:', errorData.error)
         }
       } catch (error) {
-        console.error('Error checking JWKS:', error)
+        console.error('Error checking JWKS via API route:', error)
       }
     }
 

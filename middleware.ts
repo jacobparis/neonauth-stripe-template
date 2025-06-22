@@ -16,6 +16,7 @@ function isProtectedRoute(url: string) {
     "/favicon.ico",
     "/public",
     "/api/",
+    "/template-setup",
   ]
 
   // Check if the URL starts with any of the public routes
