@@ -30,10 +30,16 @@ export function StripeWebhookForm({
     setResult(null)
 
     try {
-      await registerStripeWebhook()
+      const result = await registerStripeWebhook()
+
+      if (!result) {
+        throw new Error('Failed to register webhook')
+      }
+
       setResult({
         success: true,
-        message: 'Webhook registered successfully!',
+        webhookId: result.id,
+        webhookSecret: result.secret,
       })
     } catch (error) {
       setResult({

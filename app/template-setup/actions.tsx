@@ -445,31 +445,26 @@ export async function registerStripeWebhook() {
         `ℹ️ Updating webhook to ensure it has the correct event types...`,
       )
 
-      // Update the existing webhook with the current event types
-      await stripe.webhookEndpoints.update(existingEndpoint.id, {
-        enabled_events: events,
-      })
+      await stripe.webhookEndpoints.del(existingEndpoint.id)
 
       console.log(`✅ Webhook updated successfully!`)
-
-      // Store the webhook ID and secret in the environment variables
-      // Note: We can't get the secret for existing webhooks
-      revalidatePath('/dev-checklist')
-    } else {
-      // Create a new webhook endpoint
-      const result = await stripe.webhookEndpoints.create({
-        url: webhookUrl,
-        enabled_events: events,
-        description: `Webhook for ${VERCEL_URL}`,
-      })
-
-      console.log(`✅ Webhook registered successfully!`)
-      console.log(`ℹ️ Webhook ID: ${result.id}`)
-      console.log(`ℹ️ Webhook Secret: ${result.secret}`)
-
-      // Store the webhook ID and secret in the environment variables
-      revalidatePath('/dev-checklist')
     }
+
+    // Create a new webhook endpoint
+    const result = await stripe.webhookEndpoints.create({
+      url: webhookUrl,
+      enabled_events: events,
+      description: `Webhook for ${VERCEL_URL}`,
+    })
+
+    console.log(`✅ Webhook registered successfully!`)
+    console.log(`ℹ️ Webhook ID: ${result.id}`)
+    console.log(`ℹ️ Webhook Secret: ${result.secret}`)
+
+    // Store the webhook ID and secret in the environment variables
+    revalidatePath('/dev-checklist')
+
+    return result
   } catch (error) {
     console.error(
       'Error registering webhook:',
