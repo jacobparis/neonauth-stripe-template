@@ -35,7 +35,8 @@ export async function DevChecklistPage() {
     tablesStatus.tables.todos &&
     tablesStatus.tables.users_sync &&
     tablesStatus.tables.comments &&
-    tablesStatus.tables.activities
+    tablesStatus.tables.activities &&
+    tablesStatus.columns.users_sync_image
 
   // Check which essential environment variables are missing
   const essentialVars = {
@@ -46,7 +47,7 @@ export async function DevChecklistPage() {
   }
 
   // Calculate progress percentage
-  const totalSteps = 17 // Updated total to include 4 QStash environment variables
+  const totalSteps = 18 // Updated total to include image column check
   const completedSteps = [
     !!process.env.DATABASE_URL,
     !!process.env.NEXT_PUBLIC_STACK_PROJECT_ID,
@@ -65,6 +66,7 @@ export async function DevChecklistPage() {
     !!process.env.STRIPE_SECRET_KEY,
     !!process.env.STRIPE_WEBHOOK_SECRET,
     migrationsRun,
+    tablesStatus.columns.users_sync_image,
   ].filter(Boolean).length
 
   const isComplete = completedSteps === totalSteps
@@ -611,6 +613,29 @@ export async function DevChecklistPage() {
                       Policy present
                     </span>
                   </div>
+                </div>
+              </div>
+
+              <div className="flex items-start mt-4">
+                {tablesStatus.columns.users_sync_image ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
+                ) : (
+                  <Circle className="h-5 w-5 text-muted-foreground mt-0.5 mr-3 flex-shrink-0" />
+                )}
+                <div>
+                  <p
+                    className={`font-medium ${
+                      !tablesStatus.columns.users_sync_image
+                        ? 'text-muted-foreground'
+                        : ''
+                    }`}
+                  >
+                    Users Image Column
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Image column in neon_auth.users_sync table for storing
+                    profile images
+                  </p>
                 </div>
               </div>
 

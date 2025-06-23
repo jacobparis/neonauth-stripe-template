@@ -146,6 +146,9 @@ export async function checkMigrations() {
           comments: false,
           activities: false,
         },
+        columns: {
+          users_sync_image: false,
+        },
         rls: {
           extension: false,
           authenticated_grants: false,
@@ -185,6 +188,22 @@ export async function checkMigrations() {
         }
       }),
     )
+
+    // Check if image column exists in users_sync table
+    let imageColumnExists = false
+    try {
+      const imageColumnResult = await db.execute(sql`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_schema = 'neon_auth' 
+          AND table_name = 'users_sync' 
+          AND column_name = 'image'
+        ) as exists
+      `)
+      imageColumnExists = imageColumnResult.rows[0]?.exists || false
+    } catch (error) {
+      imageColumnExists = false
+    }
 
     // Check RLS configuration
     const rlsChecks = await Promise.all([
@@ -295,6 +314,9 @@ export async function checkMigrations() {
       tables: Object.fromEntries(
         results.map(({ table, exists }) => [table, exists]),
       ),
+      columns: {
+        users_sync_image: imageColumnExists,
+      },
       rls: {
         extension: rlsChecks[0].rows[0]?.extension_exists || false,
         authenticated_grants:
@@ -320,12 +342,16 @@ export async function checkMigrations() {
         comments: false,
         activities: false,
       },
+      columns: {
+        users_sync_image: false,
+      },
       rls: {
         extension: false,
         authenticated_grants: false,
         anonymous_grants: false,
         default_privileges: false,
         schema_usage: false,
+        tables: {},
       },
       jwks: false,
       jwksList: [],
@@ -390,16 +416,16 @@ export async function runMigrations(formData: FormData): Promise<void> {
       )
     `)
 
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS users_sync (
-        "id" varchar(255) PRIMARY KEY NOT NULL,
-        "email" varchar(255),
-        "name" varchar(255),
-        "image" text,
-        "created_at" timestamp DEFAULT now() NOT NULL,
-        "updated_at" timestamp DEFAULT now() NOT NULL,
-        "deleted_at" timestamp
-    `)
+    // Add image column to neon_auth.users_sync table if it doesn't exist
+    try {
+      await db.execute(sql`
+        ALTER TABLE neon_auth.users_sync 
+        ADD COLUMN IF NOT EXISTS image text
+      `)
+      console.log('Image column added to users_sync table')
+    } catch (error) {
+      console.log('Image column may already exist or error adding:', error)
+    }
 
     console.log('Migrations completed successfully')
 
