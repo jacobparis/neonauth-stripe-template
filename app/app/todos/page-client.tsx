@@ -7,7 +7,6 @@ import { addTodo } from '@/lib/actions'
 import { deleteTodo } from '@/actions/delete-todos'
 import { updateDueDate } from '@/actions/update-due-date'
 import { toggleTodoCompleted } from '@/actions/toggle-completed'
-import { createSampleTodos } from '@/actions/create-sample-todos'
 import { redirectToCheckout } from '@/app/api/stripe/client'
 import {
   Plus,
@@ -114,15 +113,6 @@ function AddTodoForm({
 
       // Send the actual request and wait for completion
       await addTodo(serverFormData)
-
-      // Clear the pending edit once the server action completes
-      // The real todo will come from the server through revalidation
-      setPendingEdits((prev) =>
-        prev.filter(
-          (edit) =>
-            !(edit.type === 'add' && edit.todo.id === optimisticTodo.id),
-        ),
-      )
 
       // Reset form state
       setTodoText('')
@@ -652,17 +642,7 @@ export function TodosPageClient({
         {/* Todo Groups */}
         {displayedTodos.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-muted-foreground mb-4">No todos yet.</p>
-            <Button
-              onClick={async () => {
-                const result = await createSampleTodos()
-                // The server action will trigger a revalidation of the page
-                // so we don't need to do anything with the result
-              }}
-              variant="outline"
-            >
-              Create sample todos
-            </Button>
+            <p className="text-muted-foreground">No todos yet.</p>
           </div>
         ) : (
           <div className="grid grid-cols-[1fr_auto_auto_auto]">
