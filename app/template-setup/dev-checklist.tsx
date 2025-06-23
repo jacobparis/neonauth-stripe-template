@@ -641,34 +641,33 @@ export async function DevChecklistPage() {
               </div>
             </div>
 
-            {(!tablesStatus.tables.todos || !tablesStatus.tables.users_sync) &&
-              essentialVars.database && (
-                <div className="mt-4">
-                  <div className="flex gap-4">
-                    <form action={runMigrations}>
-                      <Button
-                        type="submit"
-                        className="bg-foreground text-background hover:bg-foreground/90 px-3 py-1 rounded-md"
-                      >
-                        Run Migrations
-                      </Button>
-                    </form>
-                    <form action={resetDatabase}>
-                      <Button
-                        type="submit"
-                        variant="outline"
-                        className="border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-700 dark:hover:text-red-300 px-3 py-1 rounded-md"
-                      >
-                        Reset Database
-                      </Button>
-                    </form>
-                  </div>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Run migrations to set up your database schema, or reset to
-                    start fresh.
-                  </p>
+            {essentialVars.database && (
+              <div className="mt-4">
+                <div className="flex gap-4">
+                  <form action={runMigrations}>
+                    <Button
+                      type="submit"
+                      className="bg-foreground text-background hover:bg-foreground/90 px-3 py-1 rounded-md"
+                    >
+                      Run Migrations
+                    </Button>
+                  </form>
+                  <form action={resetDatabase}>
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      className="border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-700 dark:hover:text-red-300 px-3 py-1 rounded-md"
+                    >
+                      Reset Database
+                    </Button>
+                  </form>
                 </div>
-              )}
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Run migrations to set up your database schema, or reset to
+                  start fresh.
+                </p>
+              </div>
+            )}
 
             {needsRLS && essentialVars.database && (
               <div className="mt-4">
