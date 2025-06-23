@@ -14,11 +14,14 @@ export async function publishTask<T extends QueueTask>(task: T, options?: {
 }) {
   const client = new Client({ token: process.env.QSTASH_TOKEN! })
 
-  const url =
-    process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}/api/queue`
-      : `http://localhost:3000/api/queue`
+  if (!process.env.VERCEL_URL) {
+    throw new Error('VERCEL_URL must be set. If you are running locally, use npx untun@latest tunnel http://localhost:3000')
+  }
 
+  const baseUrl = process.env.VERCEL_URL.startsWith('http') ? process.env.VERCEL_URL : `https://${process.env.VERCEL_URL}`
+
+  const url = `${baseUrl}/api/queue`
+      
   await client.publishJSON({
     url,
     body: task,

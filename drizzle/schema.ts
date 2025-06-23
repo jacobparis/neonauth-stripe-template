@@ -1,5 +1,5 @@
-import { text, boolean, pgTable, serial, timestamp, integer, pgPolicy, varchar, pgSchema } from "drizzle-orm/pg-core"
-import { relations, sql } from "drizzle-orm"
+import { text, boolean, pgTable, timestamp, varchar, pgSchema } from "drizzle-orm/pg-core"
+import { relations } from "drizzle-orm"
 
 // Define the neon_auth schema
 const neonAuthSchema = pgSchema("neon_auth")

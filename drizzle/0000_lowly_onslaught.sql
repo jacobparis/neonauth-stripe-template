@@ -17,13 +17,3 @@ CREATE TABLE "todos" (
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
---> statement-breakpoint
-CREATE TABLE "users_sync" (
-	"id" varchar(255) PRIMARY KEY NOT NULL,
-	"email" varchar(255),
-	"name" varchar(255),
-	"image" text,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL,
-	"deleted_at" timestamp
-);

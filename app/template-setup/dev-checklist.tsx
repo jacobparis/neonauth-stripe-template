@@ -32,7 +32,10 @@ function EnvVar({ name, exists }: { name: string; exists: boolean }) {
 export async function DevChecklistPage() {
   const tablesStatus = await checkMigrations()
   const migrationsRun =
-    tablesStatus.tables.todos && tablesStatus.tables.users_sync
+    tablesStatus.tables.todos &&
+    tablesStatus.tables.users_sync &&
+    tablesStatus.tables.comments &&
+    tablesStatus.tables.activities
 
   // Check which essential environment variables are missing
   const essentialVars = {
@@ -514,7 +517,7 @@ export async function DevChecklistPage() {
               </div>
 
               <div className="flex items-start">
-                {tablesStatus.jwks ? (
+                {tablesStatus.tables.comments ? (
                   <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
                 ) : (
                   <Circle className="h-5 w-5 text-muted-foreground mt-0.5 mr-3 flex-shrink-0" />
@@ -522,27 +525,92 @@ export async function DevChecklistPage() {
                 <div>
                   <p
                     className={`font-medium ${
-                      !tablesStatus.jwks ? 'text-muted-foreground' : ''
+                      !tablesStatus.tables.comments
+                        ? 'text-muted-foreground'
+                        : ''
                     }`}
                   >
-                    NeonAuth Row Level Security JWKS
+                    Comments Table
                   </p>
-                  <>
-                    {tablesStatus.jwksList &&
-                      tablesStatus.jwksList.length > 0 && (
-                        <div className="mt-2 space-y-2">
-                          {tablesStatus.jwksList.map(
-                            (jwks: { jwks_url: string }, index: number) => (
-                              <div key={index} className="bg-muted p-2 rounded">
-                                <p className="text-xs font-mono break-all">
-                                  {jwks.jwks_url}
-                                </p>
-                              </div>
-                            ),
-                          )}
-                        </div>
-                      )}
-                  </>
+                  <div className="flex gap-2 text-xs mt-1">
+                    {tablesStatus.rls.tables?.comments?.rlsEnabled ? (
+                      <CheckCircle2 className="inline h-4 w-4 text-green-500 align-text-bottom" />
+                    ) : (
+                      <Circle className="inline h-4 w-4 text-red-300 dark:text-red-700 align-text-bottom" />
+                    )}
+                    <span
+                      className={
+                        !tablesStatus.rls.tables?.comments?.rlsEnabled
+                          ? 'text-red-500 dark:text-red-400'
+                          : ''
+                      }
+                    >
+                      RLS enabled
+                    </span>
+                    {tablesStatus.rls.tables?.comments?.hasPolicy ? (
+                      <CheckCircle2 className="inline h-4 w-4 text-green-500 align-text-bottom ml-2" />
+                    ) : (
+                      <Circle className="inline h-4 w-4 text-red-300 dark:text-red-700 align-text-bottom ml-2" />
+                    )}
+                    <span
+                      className={
+                        !tablesStatus.rls.tables?.comments?.hasPolicy
+                          ? 'text-red-500 dark:text-red-400'
+                          : ''
+                      }
+                    >
+                      Policy present
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-start">
+                {tablesStatus.tables.activities ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
+                ) : (
+                  <Circle className="h-5 w-5 text-muted-foreground mt-0.5 mr-3 flex-shrink-0" />
+                )}
+                <div>
+                  <p
+                    className={`font-medium ${
+                      !tablesStatus.tables.activities
+                        ? 'text-muted-foreground'
+                        : ''
+                    }`}
+                  >
+                    Activities Table
+                  </p>
+                  <div className="flex gap-2 text-xs mt-1">
+                    {tablesStatus.rls.tables?.activities?.rlsEnabled ? (
+                      <CheckCircle2 className="inline h-4 w-4 text-green-500 align-text-bottom" />
+                    ) : (
+                      <Circle className="inline h-4 w-4 text-red-300 dark:text-red-700 align-text-bottom" />
+                    )}
+                    <span
+                      className={
+                        !tablesStatus.rls.tables?.activities?.rlsEnabled
+                          ? 'text-red-500 dark:text-red-400'
+                          : ''
+                      }
+                    >
+                      RLS enabled
+                    </span>
+                    {tablesStatus.rls.tables?.activities?.hasPolicy ? (
+                      <CheckCircle2 className="inline h-4 w-4 text-green-500 align-text-bottom ml-2" />
+                    ) : (
+                      <Circle className="inline h-4 w-4 text-red-300 dark:text-red-700 align-text-bottom ml-2" />
+                    )}
+                    <span
+                      className={
+                        !tablesStatus.rls.tables?.activities?.hasPolicy
+                          ? 'text-red-500 dark:text-red-400'
+                          : ''
+                      }
+                    >
+                      Policy present
+                    </span>
+                  </div>
                 </div>
               </div>
 

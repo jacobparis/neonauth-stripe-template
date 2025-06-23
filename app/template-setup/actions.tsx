@@ -18,6 +18,7 @@ export async function getTableStatus() {
           todos: false,
           users_sync: false,
           comments: false,
+          activities: false,
         },
         rls: {
           tables: {},
@@ -26,7 +27,7 @@ export async function getTableStatus() {
     }
 
     // Check each table individually
-    const tables = ['todos', 'users_sync', 'comments']
+    const tables = ['todos', 'users_sync', 'comments', 'activities']
     const results = await Promise.all(
       tables.map(async (table) => {
         try {
@@ -54,7 +55,7 @@ export async function getTableStatus() {
     )
 
     // Check RLS enabled and policies for each table
-    const rlsTables = ['todos', 'users_sync']
+    const rlsTables = ['todos', 'users_sync', 'comments', 'activities']
     const rlsTableChecks = await Promise.all(
       rlsTables.map(async (table) => {
         try {
@@ -95,6 +96,7 @@ export async function getTableStatus() {
         todos: false,
         users_sync: false,
         comments: false,
+        activities: false,
       },
       rls: {
         tables: {},
@@ -141,6 +143,8 @@ export async function checkMigrations() {
         tables: {
           todos: false,
           users_sync: false,
+          comments: false,
+          activities: false,
         },
         rls: {
           extension: false,
@@ -155,7 +159,7 @@ export async function checkMigrations() {
     }
 
     // Check each table individually
-    const tables = ['todos', 'users_sync']
+    const tables = ['todos', 'users_sync', 'comments', 'activities']
     const results = await Promise.all(
       tables.map(async (table) => {
         try {
@@ -234,7 +238,7 @@ export async function checkMigrations() {
     ])
 
     // Check RLS enabled and policies for each table
-    const rlsTables = ['todos', 'users_sync']
+    const rlsTables = ['todos', 'users_sync', 'comments', 'activities']
     const rlsTableChecks = await Promise.all(
       rlsTables.map(async (table) => {
         // Check if RLS is enabled
@@ -313,6 +317,8 @@ export async function checkMigrations() {
       tables: {
         todos: false,
         users_sync: false,
+        comments: false,
+        activities: false,
       },
       rls: {
         extension: false,
@@ -370,6 +376,29 @@ export async function runMigrations(formData: FormData): Promise<void> {
         created_at timestamp DEFAULT now() NOT NULL,
         updated_at timestamp DEFAULT now() NOT NULL
       )
+    `)
+
+    // Create activities table with correct column structure
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS activities (
+        id varchar(255) PRIMARY KEY,
+        content text NOT NULL,
+        todo_id varchar(255) NOT NULL,
+        user_id varchar(255) NOT NULL,
+        created_at timestamp DEFAULT now() NOT NULL,
+        updated_at timestamp DEFAULT now() NOT NULL
+      )
+    `)
+
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS users_sync (
+        "id" varchar(255) PRIMARY KEY NOT NULL,
+        "email" varchar(255),
+        "name" varchar(255),
+        "image" text,
+        "created_at" timestamp DEFAULT now() NOT NULL,
+        "updated_at" timestamp DEFAULT now() NOT NULL,
+        "deleted_at" timestamp
     `)
 
     console.log('Migrations completed successfully')
